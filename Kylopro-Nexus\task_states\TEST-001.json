@@ -1,0 +1,37 @@
+{
+  "task_id": "TEST-001",
+  "task_type": "example_complex",
+  "status": "paused",
+  "progress": 0.5,
+  "checkpoints": [
+    {
+      "name": "checkpoint_0",
+      "timestamp": "2026-03-06T19:20:19.513147",
+      "progress": 0.1,
+      "data": {
+        "step": 0,
+        "step_name": "步骤1"
+      }
+    },
+    {
+      "name": "checkpoint_1",
+      "timestamp": "2026-03-06T19:20:21.517832",
+      "progress": 0.3,
+      "data": {
+        "step": 2,
+        "step_name": "步骤3"
+      }
+    },
+    {
+      "name": "checkpoint_2",
+      "timestamp": "2026-03-06T19:20:23.523782",
+      "progress": 0.5,
+      "data": {
+        "step": 4,
+        "step_name": "步骤5"
+      }
+    }
+  ],
+  "start_time": "2026-03-06T19:20:19.509014",
+  "last_update": "2026-03-06T19:20:23.531335"
+}
