@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-03-06T15:05:07.630628",
+  "summary": {
+    "total": 7,
+    "ok": 7,
+    "fail": 0,
+    "warn": 0
+  },
+  "skills": {
+    "telegram_notify": {
+      "name": "telegram_notify",
+      "desc": "Telegram 推送",
+      "status": "OK",
+      "detail": "导入 + 实例化成功",
+      "time_ms": 437
+    },
+    "file_monitor": {
+      "name": "file_monitor",
+      "desc": "哨兵眼文件监控",
+      "status": "OK",
+      "detail": "导入 + 实例化成功",
+      "time_ms": 47
+    },
+    "cron_report": {
+      "name": "cron_report",
+      "desc": "晨报官定时汇报",
+      "status": "OK",
+      "detail": "导入 + 实例化成功",
+      "time_ms": 406
+    },
+    "web_pilot": {
+      "name": "web_pilot",
+      "desc": "网页触角 Playwright",
+      "status": "OK",
+      "detail": "导入 + 实例化成功",
+      "time_ms": 578
+    },
+    "vision_rpa": {
+      "name": "vision_rpa",
+      "desc": "全境飞行员 RPA",
+      "status": "OK",
+      "detail": "导入 + 实例化成功",
+      "time_ms": 13235
+    },
+    "system_manager": {
+      "name": "system_manager",
+      "desc": "数字管家系统管理",
+      "status": "OK",
+      "detail": "导入 + 实例化成功",
+      "time_ms": 0
+    },
+    "ide_bridge": {
+      "name": "ide_bridge",
+      "desc": "代码神经元 IDE 桥接",
+      "status": "OK",
+      "detail": "导入 + 实例化成功",
+      "time_ms": 0
+    }
+  }
+}
