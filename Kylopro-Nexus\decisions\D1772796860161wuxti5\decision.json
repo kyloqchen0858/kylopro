@@ -1,0 +1,79 @@
+{
+  "decision_id": "D1772796860161wuxti5",
+  "type": "financial",
+  "status": "decided",
+  "context": {
+    "opportunity": {
+      "title": "网站自动化脚本开发",
+      "description": "需要为电商网站开发自动化数据抓取脚本",
+      "value": 500,
+      "currency": "USD",
+      "timeline_days": 14,
+      "source": "Upwork",
+      "client_rating": 4.8
+    },
+    "persona": {
+      "persona_name": "qianchen_AI",
+      "communication_style": "专业但友好",
+      "expertise_areas": [
+        "AI助手",
+        "自动化",
+        "编程",
+        "问题解决"
+      ],
+      "pricing_strategy": "价值导向",
+      "response_time": "及时",
+      "reputation_score": 100,
+      "trust_level": "high"
+    },
+    "current_workload": 0
+  },
+  "options": [
+    {
+      "action": "accept",
+      "expected_value": 400.0,
+      "resource_cost": 0.3,
+      "time_efficiency": 0.7,
+      "goal_alignment": 0.9,
+      "description": "接受此机会"
+    },
+    {
+      "action": "negotiate",
+      "expected_value": 450.0,
+      "resource_cost": 0.4,
+      "time_efficiency": 0.6,
+      "goal_alignment": 0.8,
+      "description": "协商更好的条件"
+    },
+    {
+      "action": "decline",
+      "expected_value": 0,
+      "resource_cost": 0.1,
+      "time_efficiency": 1.0,
+      "goal_alignment": 0.3,
+      "description": "拒绝此机会"
+    }
+  ],
+  "selected_option": {
+    "action": "negotiate",
+    "expected_value": 450.0,
+    "resource_cost": 0.4,
+    "time_efficiency": 0.6,
+    "goal_alignment": 0.8,
+    "description": "协商更好的条件"
+  },
+  "reasoning": "\n基于以下因素选择此选项:\n1. 与用户目标匹配度: 0.8\n2. 预期收益: 450.0\n3. 资源成本: 0.4\n4. 时间效率: 0.6\n综合评分: 180.40\n",
+  "risk_level": "low",
+  "confidence": 180.4,
+  "created_at": "2026-03-06T19:34:20.161189",
+  "decided_at": "2026-03-06T19:34:20.161189",
+  "completed_at": null,
+  "execution_result": null,
+  "feedback": "",
+  "logs": [
+    "[2026-03-06 19:34:20] [INFO] 开始决策: D1772796860161wuxti5",
+    "[2026-03-06 19:34:20] [INFO] 风险评估: low",
+    "[2026-03-06 19:34:20] [INFO] 决策完成: 选择选项 1",
+    "[2026-03-06 19:34:20] [INFO] 置信度: 180.40"
+  ]
+}
