@@ -1,0 +1,438 @@
+Collecting nanobot-ai
+  Obtaining dependency information for nanobot-ai from https://files.pythonhosted.org/packages/12/3e/32ff4a5edb6893235687f95ea710f9ad76e55709a25122ad402320cfce6f/nanobot_ai-0.1.4.post3-py3-none-any.whl.metadata
+  Downloading nanobot_ai-0.1.4.post3-py3-none-any.whl.metadata (1.9 kB)
+Collecting python-dotenv
+  Obtaining dependency information for python-dotenv from https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl.metadata
+  Downloading python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+Collecting openai
+  Obtaining dependency information for openai from https://files.pythonhosted.org/packages/c6/2e/3f73e8ca53718952222cacd0cf7eecc9db439d020f0c1fe7ae717e4e199a/openai-2.26.0-py3-none-any.whl.metadata
+  Downloading openai-2.26.0-py3-none-any.whl.metadata (29 kB)
+Collecting ollama
+  Obtaining dependency information for ollama from https://files.pythonhosted.org/packages/47/4f/4a617ee93d8208d2bcf26b2d8b9402ceaed03e3853c754940e2290fed063/ollama-0.6.1-py3-none-any.whl.metadata
+  Downloading ollama-0.6.1-py3-none-any.whl.metadata (4.3 kB)
+Collecting httpx
+  Obtaining dependency information for httpx from https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl.metadata
+  Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Collecting psutil
+  Obtaining dependency information for psutil from https://files.pythonhosted.org/packages/b4/90/e2159492b5426be0c1fef7acba807a03511f97c5f86b3caeda6ad92351a7/psutil-7.2.2-cp37-abi3-win_amd64.whl.metadata
+  Using cached psutil-7.2.2-cp37-abi3-win_amd64.whl.metadata (22 kB)
+Collecting croniter<7.0.0,>=6.0.0 (from nanobot-ai)
+  Obtaining dependency information for croniter<7.0.0,>=6.0.0 from https://files.pythonhosted.org/packages/07/4b/290b4c3efd6417a8b0c284896de19b1d5855e6dbdb97d2a35e68fa42de85/croniter-6.0.0-py2.py3-none-any.whl.metadata
+  Using cached croniter-6.0.0-py2.py3-none-any.whl.metadata (32 kB)
+Collecting dingtalk-stream<1.0.0,>=0.24.0 (from nanobot-ai)
+  Obtaining dependency information for dingtalk-stream<1.0.0,>=0.24.0 from https://files.pythonhosted.org/packages/4c/44/102dede3f371277598df6aa9725b82e3add068c729333c7a5dbc12764579/dingtalk_stream-0.24.3-py3-none-any.whl.metadata
+  Using cached dingtalk_stream-0.24.3-py3-none-any.whl.metadata (5.3 kB)
+Collecting json-repair<1.0.0,>=0.57.0 (from nanobot-ai)
+  Obtaining dependency information for json-repair<1.0.0,>=0.57.0 from https://files.pythonhosted.org/packages/3e/e0/a959ffaca81fb5b197d3a4d98710351e405b7f424e07cf31e8a59750c4ad/json_repair-0.58.4-py3-none-any.whl.metadata
+  Downloading json_repair-0.58.4-py3-none-any.whl.metadata (16 kB)
+Collecting lark-oapi<2.0.0,>=1.5.0 (from nanobot-ai)
+  Obtaining dependency information for lark-oapi<2.0.0,>=1.5.0 from https://files.pythonhosted.org/packages/bf/ff/2ece5d735ebfa2af600a53176f2636ae47af2bf934e08effab64f0d1e047/lark_oapi-1.5.3-py3-none-any.whl.metadata
+  Using cached lark_oapi-1.5.3-py3-none-any.whl.metadata (3.7 kB)
+Collecting litellm<2.0.0,>=1.81.5 (from nanobot-ai)
+  Obtaining dependency information for litellm<2.0.0,>=1.81.5 from https://files.pythonhosted.org/packages/28/89/eb28bfcf97d6b045c400e72eb047c381594467048c237dbb6c227764084c/litellm-1.82.0-py3-none-any.whl.metadata
+  Downloading litellm-1.82.0-py3-none-any.whl.metadata (30 kB)
+Collecting loguru<1.0.0,>=0.7.3 (from nanobot-ai)
+  Obtaining dependency information for loguru<1.0.0,>=0.7.3 from https://files.pythonhosted.org/packages/0c/29/0348de65b8cc732daa3e33e67806420b2ae89bdce2b04af740289c5c6c8c/loguru-0.7.3-py3-none-any.whl.metadata
+  Using cached loguru-0.7.3-py3-none-any.whl.metadata (22 kB)
+Collecting mcp<2.0.0,>=1.26.0 (from nanobot-ai)
+  Obtaining dependency information for mcp<2.0.0,>=1.26.0 from https://files.pythonhosted.org/packages/fd/d9/eaa1f80170d2b7c5ba23f3b59f766f3a0bb41155fbc32a69adfa1adaaef9/mcp-1.26.0-py3-none-any.whl.metadata
+  Using cached mcp-1.26.0-py3-none-any.whl.metadata (89 kB)
+Collecting msgpack<2.0.0,>=1.1.0 (from nanobot-ai)
+  Obtaining dependency information for msgpack<2.0.0,>=1.1.0 from https://files.pythonhosted.org/packages/8c/ec/d431eb7941fb55a31dd6ca3404d41fbb52d99172df2e7707754488390910/msgpack-1.1.2-cp312-cp312-win_amd64.whl.metadata
+  Using cached msgpack-1.1.2-cp312-cp312-win_amd64.whl.metadata (8.4 kB)
+Collecting oauth-cli-kit<1.0.0,>=0.1.3 (from nanobot-ai)
+  Obtaining dependency information for oauth-cli-kit<1.0.0,>=0.1.3 from https://files.pythonhosted.org/packages/ee/55/a4abfc5f9be60ffd7fedf0e808ffd0a1d35f3ecd6f7b2fc782b7948a8329/oauth_cli_kit-0.1.3-py3-none-any.whl.metadata
+  Using cached oauth_cli_kit-0.1.3-py3-none-any.whl.metadata (609 bytes)
+Collecting prompt-toolkit<4.0.0,>=3.0.50 (from nanobot-ai)
+  Obtaining dependency information for prompt-toolkit<4.0.0,>=3.0.50 from https://files.pythonhosted.org/packages/84/03/0d3ce49e2505ae70cf43bc5bb3033955d2fc9f932163e84dc0779cc47f48/prompt_toolkit-3.0.52-py3-none-any.whl.metadata
+  Using cached prompt_toolkit-3.0.52-py3-none-any.whl.metadata (6.4 kB)
+Collecting pydantic-settings<3.0.0,>=2.12.0 (from nanobot-ai)
+  Obtaining dependency information for pydantic-settings<3.0.0,>=2.12.0 from https://files.pythonhosted.org/packages/00/4b/ccc026168948fec4f7555b9164c724cf4125eac006e176541483d2c959be/pydantic_settings-2.13.1-py3-none-any.whl.metadata
+  Using cached pydantic_settings-2.13.1-py3-none-any.whl.metadata (3.4 kB)
+Collecting pydantic<3.0.0,>=2.12.0 (from nanobot-ai)
+  Obtaining dependency information for pydantic<3.0.0,>=2.12.0 from https://files.pythonhosted.org/packages/5a/87/b70ad306ebb6f9b585f114d0ac2137d792b48be34d732d60e597c2f8465a/pydantic-2.12.5-py3-none-any.whl.metadata
+  Using cached pydantic-2.12.5-py3-none-any.whl.metadata (90 kB)
+Collecting python-socketio<6.0.0,>=5.16.0 (from nanobot-ai)
+  Obtaining dependency information for python-socketio<6.0.0,>=5.16.0 from https://files.pythonhosted.org/packages/07/c7/deb8c5e604404dbf10a3808a858946ca3547692ff6316b698945bb72177e/python_socketio-5.16.1-py3-none-any.whl.metadata
+  Using cached python_socketio-5.16.1-py3-none-any.whl.metadata (3.3 kB)
+Collecting python-socks[asyncio]<3.0.0,>=2.8.0 (from nanobot-ai)
+  Obtaining dependency information for python-socks[asyncio]<3.0.0,>=2.8.0 from https://files.pythonhosted.org/packages/15/fe/9a58cb6eec633ff6afae150ca53c16f8cc8b65862ccb3d088051efdfceb7/python_socks-2.8.1-py3-none-any.whl.metadata
+  Using cached python_socks-2.8.1-py3-none-any.whl.metadata (8.2 kB)
+Collecting python-telegram-bot[socks]<23.0,>=22.0 (from nanobot-ai)
+  Obtaining dependency information for python-telegram-bot[socks]<23.0,>=22.0 from https://files.pythonhosted.org/packages/13/97/7298f0e1afe3a1ae52ff4c5af5087ed4de319ea73eb3b5c8c4dd4e76e708/python_telegram_bot-22.6-py3-none-any.whl.metadata
+  Using cached python_telegram_bot-22.6-py3-none-any.whl.metadata (17 kB)
+Collecting qq-botpy<2.0.0,>=1.2.0 (from nanobot-ai)
+  Obtaining dependency information for qq-botpy<2.0.0,>=1.2.0 from https://files.pythonhosted.org/packages/94/2e/cf662566627f1c3508924ef5a0f8277ffc4ac033d6c3a05d1ead6e76f60b/qq_botpy-1.2.1-py3-none-any.whl.metadata
+  Using cached qq_botpy-1.2.1-py3-none-any.whl.metadata (5.5 kB)
+Collecting readability-lxml<1.0.0,>=0.8.4 (from nanobot-ai)
+  Obtaining dependency information for readability-lxml<1.0.0,>=0.8.4 from https://files.pythonhosted.org/packages/c7/75/2cc58965097e351415af420be81c4665cf80da52a17ef43c01ffbe2caf91/readability_lxml-0.8.4.1-py3-none-any.whl.metadata
+  Using cached readability_lxml-0.8.4.1-py3-none-any.whl.metadata (4.0 kB)
+Collecting rich<15.0.0,>=14.0.0 (from nanobot-ai)
+  Obtaining dependency information for rich<15.0.0,>=14.0.0 from https://files.pythonhosted.org/packages/14/25/b208c5683343959b670dc001595f2f3737e051da617f66c31f7c4fa93abc/rich-14.3.3-py3-none-any.whl.metadata
+  Using cached rich-14.3.3-py3-none-any.whl.metadata (18 kB)
+Collecting slack-sdk<4.0.0,>=3.39.0 (from nanobot-ai)
+  Obtaining dependency information for slack-sdk<4.0.0,>=3.39.0 from https://files.pythonhosted.org/packages/6e/e1/bb81f93c9f403e3b573c429dd4838ec9b44e4ef35f3b0759eb49557ab6e3/slack_sdk-3.40.1-py2.py3-none-any.whl.metadata
+  Using cached slack_sdk-3.40.1-py2.py3-none-any.whl.metadata (15 kB)
+Collecting slackify-markdown<1.0.0,>=0.2.0 (from nanobot-ai)
+  Obtaining dependency information for slackify-markdown<1.0.0,>=0.2.0 from https://files.pythonhosted.org/packages/b3/12/ef80548ce2a87cb239909f615cfdef224d165c3d6c2cdf226c833fa1784e/slackify_markdown-0.2.2-py3-none-any.whl.metadata
+  Downloading slackify_markdown-0.2.2-py3-none-any.whl.metadata (4.7 kB)
+Collecting socksio<2.0.0,>=1.0.0 (from nanobot-ai)
+  Obtaining dependency information for socksio<2.0.0,>=1.0.0 from https://files.pythonhosted.org/packages/37/c3/6eeb6034408dac0fa653d126c9204ade96b819c936e136c5e8a6897eee9c/socksio-1.0.0-py3-none-any.whl.metadata
+  Using cached socksio-1.0.0-py3-none-any.whl.metadata (6.1 kB)
+Collecting typer<1.0.0,>=0.20.0 (from nanobot-ai)
+  Obtaining dependency information for typer<1.0.0,>=0.20.0 from https://files.pythonhosted.org/packages/4a/91/48db081e7a63bb37284f9fbcefda7c44c277b18b0e13fbc36ea2335b71e6/typer-0.24.1-py3-none-any.whl.metadata
+  Using cached typer-0.24.1-py3-none-any.whl.metadata (16 kB)
+Collecting websocket-client<2.0.0,>=1.9.0 (from nanobot-ai)
+  Obtaining dependency information for websocket-client<2.0.0,>=1.9.0 from https://files.pythonhosted.org/packages/34/db/b10e48aa8fff7407e67470363eac595018441cf32d5e1001567a7aeba5d2/websocket_client-1.9.0-py3-none-any.whl.metadata
+  Using cached websocket_client-1.9.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting websockets<17.0,>=16.0 (from nanobot-ai)
+  Obtaining dependency information for websockets<17.0,>=16.0 from https://files.pythonhosted.org/packages/c3/f0/f3a17365441ed1c27f850a80b2bc680a0fa9505d733fe152fdf5e98c1c0b/websockets-16.0-cp312-cp312-win_amd64.whl.metadata
+  Using cached websockets-16.0-cp312-cp312-win_amd64.whl.metadata (7.0 kB)
+Collecting anyio<5,>=3.5.0 (from openai)
+  Obtaining dependency information for anyio<5,>=3.5.0 from https://files.pythonhosted.org/packages/38/0e/27be9fdef66e72d64c0cdc3cc2823101b80585f8119b5c112c2e8f5f7dab/anyio-4.12.1-py3-none-any.whl.metadata
+  Using cached anyio-4.12.1-py3-none-any.whl.metadata (4.3 kB)
+Collecting distro<2,>=1.7.0 (from openai)
+  Obtaining dependency information for distro<2,>=1.7.0 from https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl.metadata
+  Using cached distro-1.9.0-py3-none-any.whl.metadata (6.8 kB)
+Collecting jiter<1,>=0.10.0 (from openai)
+  Obtaining dependency information for jiter<1,>=0.10.0 from https://files.pythonhosted.org/packages/09/ee/f0ae675a957ae5a8f160be3e87acea6b11dc7b89f6b7ab057e77b2d2b13a/jiter-0.13.0-cp312-cp312-win_amd64.whl.metadata
+  Using cached jiter-0.13.0-cp312-cp312-win_amd64.whl.metadata (5.3 kB)
+Collecting sniffio (from openai)
+  Obtaining dependency information for sniffio from https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl.metadata
+  Using cached sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Collecting tqdm>4 (from openai)
+  Obtaining dependency information for tqdm>4 from https://files.pythonhosted.org/packages/16/e1/3079a9ff9b8e11b846c6ac5c8b5bfb7ff225eee721825310c91b3b50304f/tqdm-4.67.3-py3-none-any.whl.metadata
+  Using cached tqdm-4.67.3-py3-none-any.whl.metadata (57 kB)
+Collecting typing-extensions<5,>=4.11 (from openai)
+  Obtaining dependency information for typing-extensions<5,>=4.11 from https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl.metadata
+  Using cached typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting certifi (from httpx)
+  Obtaining dependency information for certifi from https://files.pythonhosted.org/packages/9a/3c/c17fb3ca2d9c3acff52e30b309f538586f9f5b9c9cf454f3845fc9af4881/certifi-2026.2.25-py3-none-any.whl.metadata
+  Using cached certifi-2026.2.25-py3-none-any.whl.metadata (2.5 kB)
+Collecting httpcore==1.* (from httpx)
+  Obtaining dependency information for httpcore==1.* from https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl.metadata
+  Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting idna (from httpx)
+  Obtaining dependency information for idna from https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl.metadata
+  Using cached idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+Collecting h11>=0.16 (from httpcore==1.*->httpx)
+  Obtaining dependency information for h11>=0.16 from https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl.metadata
+  Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting python-dateutil (from croniter<7.0.0,>=6.0.0->nanobot-ai)
+  Obtaining dependency information for python-dateutil from https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata
+  Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+Collecting pytz>2021.1 (from croniter<7.0.0,>=6.0.0->nanobot-ai)
+  Obtaining dependency information for pytz>2021.1 from https://files.pythonhosted.org/packages/10/99/781fe0c827be2742bcc775efefccb3b048a3a9c6ce9aec0cbf4a101677e5/pytz-2026.1.post1-py2.py3-none-any.whl.metadata
+  Downloading pytz-2026.1.post1-py2.py3-none-any.whl.metadata (22 kB)
+Collecting aiohttp>=3.10.0 (from dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for aiohttp>=3.10.0 from https://files.pythonhosted.org/packages/d9/b7/76175c7cb4eb73d91ad63c34e29fc4f77c9386bba4a65b53ba8e05ee3c39/aiohttp-3.13.3-cp312-cp312-win_amd64.whl.metadata
+  Using cached aiohttp-3.13.3-cp312-cp312-win_amd64.whl.metadata (8.4 kB)
+Collecting requests>=2.27.1 (from dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for requests>=2.27.1 from https://files.pythonhosted.org/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl.metadata
+  Using cached requests-2.32.5-py3-none-any.whl.metadata (4.9 kB)
+Collecting requests-toolbelt (from lark-oapi<2.0.0,>=1.5.0->nanobot-ai)
+  Obtaining dependency information for requests-toolbelt from https://files.pythonhosted.org/packages/3f/51/d4db610ef29373b879047326cbf6fa98b6c1969d6f6dc423279de2b1be2c/requests_toolbelt-1.0.0-py2.py3-none-any.whl.metadata
+  Using cached requests_toolbelt-1.0.0-py2.py3-none-any.whl.metadata (14 kB)
+Collecting pycryptodome (from lark-oapi<2.0.0,>=1.5.0->nanobot-ai)
+  Obtaining dependency information for pycryptodome from https://files.pythonhosted.org/packages/54/2f/e97a1b8294db0daaa87012c24a7bb714147c7ade7656973fd6c736b484ff/pycryptodome-3.23.0-cp37-abi3-win_amd64.whl.metadata
+  Using cached pycryptodome-3.23.0-cp37-abi3-win_amd64.whl.metadata (3.5 kB)
+Collecting click (from litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for click from https://files.pythonhosted.org/packages/98/78/01c019cdb5d6498122777c1a43056ebb3ebfeef2076d9d026bfe15583b2b/click-8.3.1-py3-none-any.whl.metadata
+  Using cached click-8.3.1-py3-none-any.whl.metadata (2.6 kB)
+Collecting fastuuid>=0.13.0 (from litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for fastuuid>=0.13.0 from https://files.pythonhosted.org/packages/cc/fc/f5c799a6ea6d877faec0472d0b27c079b47c86b1cdc577720a5386483b36/fastuuid-0.14.0-cp312-cp312-win_amd64.whl.metadata
+  Using cached fastuuid-0.14.0-cp312-cp312-win_amd64.whl.metadata (1.1 kB)
+Collecting importlib-metadata>=6.8.0 (from litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for importlib-metadata>=6.8.0 from https://files.pythonhosted.org/packages/fa/5e/f8e9a1d23b9c20a551a8a02ea3637b4642e22c2626e3a13a9a29cdea99eb/importlib_metadata-8.7.1-py3-none-any.whl.metadata
+  Using cached importlib_metadata-8.7.1-py3-none-any.whl.metadata (4.7 kB)
+Collecting jinja2<4.0.0,>=3.1.2 (from litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for jinja2<4.0.0,>=3.1.2 from https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl.metadata
+  Using cached jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting jsonschema<5.0.0,>=4.23.0 (from litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for jsonschema<5.0.0,>=4.23.0 from https://files.pythonhosted.org/packages/69/90/f63fb5873511e014207a475e2bb4e8b2e570d655b00ac19a9a0ca0a385ee/jsonschema-4.26.0-py3-none-any.whl.metadata
+  Using cached jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+Collecting tiktoken>=0.7.0 (from litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for tiktoken>=0.7.0 from https://files.pythonhosted.org/packages/81/10/b8523105c590c5b8349f2587e2fdfe51a69544bd5a76295fc20f2374f470/tiktoken-0.12.0-cp312-cp312-win_amd64.whl.metadata
+  Using cached tiktoken-0.12.0-cp312-cp312-win_amd64.whl.metadata (6.9 kB)
+Collecting tokenizers (from litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for tokenizers from https://files.pythonhosted.org/packages/65/71/0670843133a43d43070abeb1949abfdef12a86d490bea9cd9e18e37c5ff7/tokenizers-0.22.2-cp39-abi3-win_amd64.whl.metadata
+  Using cached tokenizers-0.22.2-cp39-abi3-win_amd64.whl.metadata (7.4 kB)
+Collecting colorama>=0.3.4 (from loguru<1.0.0,>=0.7.3->nanobot-ai)
+  Obtaining dependency information for colorama>=0.3.4 from https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl.metadata
+  Using cached colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+Collecting win32-setctime>=1.0.0 (from loguru<1.0.0,>=0.7.3->nanobot-ai)
+  Obtaining dependency information for win32-setctime>=1.0.0 from https://files.pythonhosted.org/packages/e1/07/c6fe3ad3e685340704d314d765b7912993bcb8dc198f0e7a89382d37974b/win32_setctime-1.2.0-py3-none-any.whl.metadata
+  Using cached win32_setctime-1.2.0-py3-none-any.whl.metadata (2.4 kB)
+Collecting httpx-sse>=0.4 (from mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for httpx-sse>=0.4 from https://files.pythonhosted.org/packages/d2/fd/6668e5aec43ab844de6fc74927e155a3b37bf40d7c3790e49fc0406b6578/httpx_sse-0.4.3-py3-none-any.whl.metadata
+  Using cached httpx_sse-0.4.3-py3-none-any.whl.metadata (9.7 kB)
+Collecting pyjwt[crypto]>=2.10.1 (from mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for pyjwt[crypto]>=2.10.1 from https://files.pythonhosted.org/packages/6f/01/c26ce75ba460d5cd503da9e13b21a33804d38c2165dec7b716d06b13010c/pyjwt-2.11.0-py3-none-any.whl.metadata
+  Using cached pyjwt-2.11.0-py3-none-any.whl.metadata (4.0 kB)
+Collecting python-multipart>=0.0.9 (from mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for python-multipart>=0.0.9 from https://files.pythonhosted.org/packages/1b/d0/397f9626e711ff749a95d96b7af99b9c566a9bb5129b8e4c10fc4d100304/python_multipart-0.0.22-py3-none-any.whl.metadata
+  Using cached python_multipart-0.0.22-py3-none-any.whl.metadata (1.8 kB)
+Collecting pywin32>=310 (from mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for pywin32>=310 from https://files.pythonhosted.org/packages/d1/a8/a0e8d07d4d051ec7502cd58b291ec98dcc0c3fff027caad0470b72cfcc2f/pywin32-311-cp312-cp312-win_amd64.whl.metadata
+  Using cached pywin32-311-cp312-cp312-win_amd64.whl.metadata (10 kB)
+Collecting sse-starlette>=1.6.1 (from mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for sse-starlette>=1.6.1 from https://files.pythonhosted.org/packages/61/28/8cb142d3fe80c4a2d8af54ca0b003f47ce0ba920974e7990fa6e016402d1/sse_starlette-3.3.2-py3-none-any.whl.metadata
+  Using cached sse_starlette-3.3.2-py3-none-any.whl.metadata (14 kB)
+Collecting starlette>=0.27 (from mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for starlette>=0.27 from https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl.metadata
+  Using cached starlette-0.52.1-py3-none-any.whl.metadata (6.3 kB)
+Collecting typing-inspection>=0.4.1 (from mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for typing-inspection>=0.4.1 from https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl.metadata
+  Using cached typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+Collecting uvicorn>=0.31.1 (from mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for uvicorn>=0.31.1 from https://files.pythonhosted.org/packages/83/e4/d04a086285c20886c0daad0e026f250869201013d18f81d9ff5eada73a88/uvicorn-0.41.0-py3-none-any.whl.metadata
+  Using cached uvicorn-0.41.0-py3-none-any.whl.metadata (6.7 kB)
+Collecting platformdirs>=4.0.0 (from oauth-cli-kit<1.0.0,>=0.1.3->nanobot-ai)
+  Obtaining dependency information for platformdirs>=4.0.0 from https://files.pythonhosted.org/packages/63/d7/97f7e3a6abb67d8080dd406fd4df842c2be0efaf712d1c899c32a075027c/platformdirs-4.9.4-py3-none-any.whl.metadata
+  Downloading platformdirs-4.9.4-py3-none-any.whl.metadata (4.7 kB)
+Collecting wcwidth (from prompt-toolkit<4.0.0,>=3.0.50->nanobot-ai)
+  Obtaining dependency information for wcwidth from https://files.pythonhosted.org/packages/68/5a/199c59e0a824a3db2b89c5d2dade7ab5f9624dbf6448dc291b46d5ec94d3/wcwidth-0.6.0-py3-none-any.whl.metadata
+  Using cached wcwidth-0.6.0-py3-none-any.whl.metadata (30 kB)
+Collecting annotated-types>=0.6.0 (from pydantic<3.0.0,>=2.12.0->nanobot-ai)
+  Obtaining dependency information for annotated-types>=0.6.0 from https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl.metadata
+  Using cached annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.41.5 (from pydantic<3.0.0,>=2.12.0->nanobot-ai)
+  Obtaining dependency information for pydantic-core==2.41.5 from https://files.pythonhosted.org/packages/86/45/00173a033c801cacf67c190fef088789394feaf88a98a7035b0e40d53dc9/pydantic_core-2.41.5-cp312-cp312-win_amd64.whl.metadata
+  Using cached pydantic_core-2.41.5-cp312-cp312-win_amd64.whl.metadata (7.4 kB)
+Collecting bidict>=0.21.0 (from python-socketio<6.0.0,>=5.16.0->nanobot-ai)
+  Obtaining dependency information for bidict>=0.21.0 from https://files.pythonhosted.org/packages/99/37/e8730c3587a65eb5645d4aba2d27aae48e8003614d6aaf15dda67f702f1f/bidict-0.23.1-py3-none-any.whl.metadata
+  Using cached bidict-0.23.1-py3-none-any.whl.metadata (8.7 kB)
+Collecting python-engineio>=4.11.0 (from python-socketio<6.0.0,>=5.16.0->nanobot-ai)
+  Obtaining dependency information for python-engineio>=4.11.0 from https://files.pythonhosted.org/packages/aa/54/0cce26da03a981f949bb8449c9778537f75f5917c172e1d2992ff25cb57d/python_engineio-4.13.1-py3-none-any.whl.metadata
+  Using cached python_engineio-4.13.1-py3-none-any.whl.metadata (2.3 kB)
+Collecting PyYAML (from qq-botpy<2.0.0,>=1.2.0->nanobot-ai)
+  Obtaining dependency information for PyYAML from https://files.pythonhosted.org/packages/86/bf/899e81e4cce32febab4fb42bb97dcdf66bc135272882d1987881a4b519e9/pyyaml-6.0.3-cp312-cp312-win_amd64.whl.metadata
+  Using cached pyyaml-6.0.3-cp312-cp312-win_amd64.whl.metadata (2.4 kB)
+Collecting APScheduler (from qq-botpy<2.0.0,>=1.2.0->nanobot-ai)
+  Obtaining dependency information for APScheduler from https://files.pythonhosted.org/packages/9f/64/2e54428beba8d9992aa478bb8f6de9e4ecaa5f8f513bcfd567ed7fb0262d/apscheduler-3.11.2-py3-none-any.whl.metadata
+  Using cached apscheduler-3.11.2-py3-none-any.whl.metadata (6.4 kB)
+Collecting chardet (from readability-lxml<1.0.0,>=0.8.4->nanobot-ai)
+  Obtaining dependency information for chardet from https://files.pythonhosted.org/packages/07/ba/7ca89301e492ac4184ba7f4736565d954ba3125acf6bf02c66a38a802bda/chardet-7.0.1-cp312-cp312-win_amd64.whl.metadata
+  Downloading chardet-7.0.1-cp312-cp312-win_amd64.whl.metadata (7.1 kB)
+Collecting lxml[html_clean] (from readability-lxml<1.0.0,>=0.8.4->nanobot-ai)
+  Obtaining dependency information for lxml[html_clean] from https://files.pythonhosted.org/packages/f7/d7/0cdfb6c3e30893463fb3d1e52bc5f5f99684a03c29a0b6b605cfae879cd5/lxml-6.0.2-cp312-cp312-win_amd64.whl.metadata
+  Using cached lxml-6.0.2-cp312-cp312-win_amd64.whl.metadata (3.7 kB)
+Collecting cssselect (from readability-lxml<1.0.0,>=0.8.4->nanobot-ai)
+  Obtaining dependency information for cssselect from https://files.pythonhosted.org/packages/20/0c/7bb51e3acfafd16c48875bf3db03607674df16f5b6ef8d056586af7e2b8b/cssselect-1.4.0-py3-none-any.whl.metadata
+  Using cached cssselect-1.4.0-py3-none-any.whl.metadata (2.4 kB)
+Collecting markdown-it-py>=2.2.0 (from rich<15.0.0,>=14.0.0->nanobot-ai)
+  Obtaining dependency information for markdown-it-py>=2.2.0 from https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl.metadata
+  Using cached markdown_it_py-4.0.0-py3-none-any.whl.metadata (7.3 kB)
+Collecting pygments<3.0.0,>=2.13.0 (from rich<15.0.0,>=14.0.0->nanobot-ai)
+  Obtaining dependency information for pygments<3.0.0,>=2.13.0 from https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl.metadata
+  Using cached pygments-2.19.2-py3-none-any.whl.metadata (2.5 kB)
+Collecting shellingham>=1.3.0 (from typer<1.0.0,>=0.20.0->nanobot-ai)
+  Obtaining dependency information for shellingham>=1.3.0 from https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl.metadata
+  Using cached shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+Collecting annotated-doc>=0.0.2 (from typer<1.0.0,>=0.20.0->nanobot-ai)
+  Obtaining dependency information for annotated-doc>=0.0.2 from https://files.pythonhosted.org/packages/1e/d3/26bf1008eb3d2daa8ef4cacc7f3bfdc11818d111f7e2d0201bc6e3b49d45/annotated_doc-0.0.4-py3-none-any.whl.metadata
+  Using cached annotated_doc-0.0.4-py3-none-any.whl.metadata (6.6 kB)
+Collecting aiohappyeyeballs>=2.5.0 (from aiohttp>=3.10.0->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for aiohappyeyeballs>=2.5.0 from https://files.pythonhosted.org/packages/0f/15/5bf3b99495fb160b63f95972b81750f18f7f4e02ad051373b669d17d44f2/aiohappyeyeballs-2.6.1-py3-none-any.whl.metadata
+  Using cached aiohappyeyeballs-2.6.1-py3-none-any.whl.metadata (5.9 kB)
+Collecting aiosignal>=1.4.0 (from aiohttp>=3.10.0->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for aiosignal>=1.4.0 from https://files.pythonhosted.org/packages/fb/76/641ae371508676492379f16e2fa48f4e2c11741bd63c48be4b12a6b09cba/aiosignal-1.4.0-py3-none-any.whl.metadata
+  Using cached aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+Collecting attrs>=17.3.0 (from aiohttp>=3.10.0->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for attrs>=17.3.0 from https://files.pythonhosted.org/packages/3a/2a/7cc015f5b9f5db42b7d48157e23356022889fc354a2813c15934b7cb5c0e/attrs-25.4.0-py3-none-any.whl.metadata
+  Using cached attrs-25.4.0-py3-none-any.whl.metadata (10 kB)
+Collecting frozenlist>=1.1.1 (from aiohttp>=3.10.0->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for frozenlist>=1.1.1 from https://files.pythonhosted.org/packages/b8/af/38e51a553dd66eb064cdf193841f16f077585d4d28394c2fa6235cb41765/frozenlist-1.8.0-cp312-cp312-win_amd64.whl.metadata
+  Using cached frozenlist-1.8.0-cp312-cp312-win_amd64.whl.metadata (21 kB)
+Collecting multidict<7.0,>=4.5 (from aiohttp>=3.10.0->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for multidict<7.0,>=4.5 from https://files.pythonhosted.org/packages/80/31/0b2517913687895f5904325c2069d6a3b78f66cc641a86a2baf75a05dcbb/multidict-6.7.1-cp312-cp312-win_amd64.whl.metadata
+  Using cached multidict-6.7.1-cp312-cp312-win_amd64.whl.metadata (5.5 kB)
+Collecting propcache>=0.2.0 (from aiohttp>=3.10.0->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for propcache>=0.2.0 from https://files.pythonhosted.org/packages/54/09/d19cff2a5aaac632ec8fc03737b223597b1e347416934c1b3a7df079784c/propcache-0.4.1-cp312-cp312-win_amd64.whl.metadata
+  Using cached propcache-0.4.1-cp312-cp312-win_amd64.whl.metadata (14 kB)
+Collecting yarl<2.0,>=1.17.0 (from aiohttp>=3.10.0->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for yarl<2.0,>=1.17.0 from https://files.pythonhosted.org/packages/f5/be/25216a49daeeb7af2bec0db22d5e7df08ed1d7c9f65d78b14f3b74fd72fc/yarl-1.23.0-cp312-cp312-win_amd64.whl.metadata
+  Downloading yarl-1.23.0-cp312-cp312-win_amd64.whl.metadata (82 kB)
+     ---------------------------------------- 82.2/82.2 kB 2.3 MB/s eta 0:00:00
+Collecting zipp>=3.20 (from importlib-metadata>=6.8.0->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for zipp>=3.20 from https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl.metadata
+  Using cached zipp-3.23.0-py3-none-any.whl.metadata (3.6 kB)
+Collecting MarkupSafe>=2.0 (from jinja2<4.0.0,>=3.1.2->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for MarkupSafe>=2.0 from https://files.pythonhosted.org/packages/aa/5b/bec5aa9bbbb2c946ca2733ef9c4ca91c91b6a24580193e891b5f7dbe8e1e/markupsafe-3.0.3-cp312-cp312-win_amd64.whl.metadata
+  Using cached markupsafe-3.0.3-cp312-cp312-win_amd64.whl.metadata (2.8 kB)
+Collecting jsonschema-specifications>=2023.03.6 (from jsonschema<5.0.0,>=4.23.0->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for jsonschema-specifications>=2023.03.6 from https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata
+  Using cached jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+Collecting referencing>=0.28.4 (from jsonschema<5.0.0,>=4.23.0->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for referencing>=0.28.4 from https://files.pythonhosted.org/packages/2c/58/ca301544e1fa93ed4f80d724bf5b194f6e4b945841c5bfd555878eea9fcb/referencing-0.37.0-py3-none-any.whl.metadata
+  Using cached referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+Collecting rpds-py>=0.25.0 (from jsonschema<5.0.0,>=4.23.0->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for rpds-py>=0.25.0 from https://files.pythonhosted.org/packages/39/3b/f786af9957306fdc38a74cef405b7b93180f481fb48453a114bb6465744a/rpds_py-0.30.0-cp312-cp312-win_amd64.whl.metadata
+  Using cached rpds_py-0.30.0-cp312-cp312-win_amd64.whl.metadata (4.2 kB)
+Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich<15.0.0,>=14.0.0->nanobot-ai)
+  Obtaining dependency information for mdurl~=0.1 from https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl.metadata
+  Using cached mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+Collecting cryptography>=3.4.0 (from pyjwt[crypto]>=2.10.1->mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for cryptography>=3.4.0 from https://files.pythonhosted.org/packages/e9/5a/ac0f49e48063ab4255d9e3b79f5def51697fce1a95ea1370f03dc9db76f6/cryptography-46.0.5-cp311-abi3-win_amd64.whl.metadata
+  Using cached cryptography-46.0.5-cp311-abi3-win_amd64.whl.metadata (5.7 kB)
+Collecting simple-websocket>=0.10.0 (from python-engineio>=4.11.0->python-socketio<6.0.0,>=5.16.0->nanobot-ai)
+  Obtaining dependency information for simple-websocket>=0.10.0 from https://files.pythonhosted.org/packages/52/59/0782e51887ac6b07ffd1570e0364cf901ebc36345fea669969d2084baebb/simple_websocket-1.1.0-py3-none-any.whl.metadata
+  Using cached simple_websocket-1.1.0-py3-none-any.whl.metadata (1.5 kB)
+Collecting charset_normalizer<4,>=2 (from requests>=2.27.1->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for charset_normalizer<4,>=2 from https://files.pythonhosted.org/packages/70/53/e44a4c07e8904500aec95865dc3f6464dc3586a039ef0df606eb3ac38e35/charset_normalizer-3.4.5-cp312-cp312-win_amd64.whl.metadata
+  Downloading charset_normalizer-3.4.5-cp312-cp312-win_amd64.whl.metadata (39 kB)
+Collecting urllib3<3,>=1.21.1 (from requests>=2.27.1->dingtalk-stream<1.0.0,>=0.24.0->nanobot-ai)
+  Obtaining dependency information for urllib3<3,>=1.21.1 from https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl.metadata
+  Using cached urllib3-2.6.3-py3-none-any.whl.metadata (6.9 kB)
+Collecting regex>=2022.1.18 (from tiktoken>=0.7.0->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for regex>=2022.1.18 from https://files.pythonhosted.org/packages/fa/06/2a6f7dff190e5fa9df9fb4acf2fdf17a1aa0f7f54596cba8de608db56b3a/regex-2026.2.28-cp312-cp312-win_amd64.whl.metadata
+  Using cached regex-2026.2.28-cp312-cp312-win_amd64.whl.metadata (41 kB)
+Collecting tzlocal>=3.0 (from APScheduler->qq-botpy<2.0.0,>=1.2.0->nanobot-ai)
+  Obtaining dependency information for tzlocal>=3.0 from https://files.pythonhosted.org/packages/c2/14/e2a54fabd4f08cd7af1c07030603c3356b74da07f7cc056e600436edfa17/tzlocal-5.3.1-py3-none-any.whl.metadata
+  Using cached tzlocal-5.3.1-py3-none-any.whl.metadata (7.6 kB)
+Collecting six>=1.5 (from python-dateutil->croniter<7.0.0,>=6.0.0->nanobot-ai)
+  Obtaining dependency information for six>=1.5 from https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl.metadata
+  Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+Collecting huggingface-hub<2.0,>=0.16.4 (from tokenizers->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for huggingface-hub<2.0,>=0.16.4 from https://files.pythonhosted.org/packages/ec/74/2bc951622e2dbba1af9a460d93c51d15e458becd486e62c29cc0ccb08178/huggingface_hub-1.5.0-py3-none-any.whl.metadata
+  Using cached huggingface_hub-1.5.0-py3-none-any.whl.metadata (13 kB)
+Collecting cffi>=2.0.0 (from cryptography>=3.4.0->pyjwt[crypto]>=2.10.1->mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for cffi>=2.0.0 from https://files.pythonhosted.org/packages/f8/ed/13bd4418627013bec4ed6e54283b1959cf6db888048c7cf4b4c3b5b36002/cffi-2.0.0-cp312-cp312-win_amd64.whl.metadata
+  Using cached cffi-2.0.0-cp312-cp312-win_amd64.whl.metadata (2.6 kB)
+Collecting filelock>=3.10.0 (from huggingface-hub<2.0,>=0.16.4->tokenizers->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for filelock>=3.10.0 from https://files.pythonhosted.org/packages/f9/0b/de6f54d4a8bedfe8645c41497f3c18d749f0bd3218170c667bf4b81d0cdd/filelock-3.25.0-py3-none-any.whl.metadata
+  Downloading filelock-3.25.0-py3-none-any.whl.metadata (2.0 kB)
+Collecting fsspec>=2023.5.0 (from huggingface-hub<2.0,>=0.16.4->tokenizers->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for fsspec>=2023.5.0 from https://files.pythonhosted.org/packages/e6/ab/fb21f4c939bb440104cc2b396d3be1d9b7a9fd3c6c2a53d98c45b3d7c954/fsspec-2026.2.0-py3-none-any.whl.metadata
+  Using cached fsspec-2026.2.0-py3-none-any.whl.metadata (10 kB)
+Collecting hf-xet<2.0.0,>=1.2.0 (from huggingface-hub<2.0,>=0.16.4->tokenizers->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for hf-xet<2.0.0,>=1.2.0 from https://files.pythonhosted.org/packages/2b/0b/99bfd948a3ed3620ab709276df3ad3710dcea61976918cce8706502927af/hf_xet-1.3.2-cp37-abi3-win_amd64.whl.metadata
+  Using cached hf_xet-1.3.2-cp37-abi3-win_amd64.whl.metadata (4.9 kB)
+Collecting packaging>=20.9 (from huggingface-hub<2.0,>=0.16.4->tokenizers->litellm<2.0.0,>=1.81.5->nanobot-ai)
+  Obtaining dependency information for packaging>=20.9 from https://files.pythonhosted.org/packages/b7/b9/c538f279a4e237a006a2c98387d081e9eb060d203d8ed34467cc0f0b9b53/packaging-26.0-py3-none-any.whl.metadata
+  Using cached packaging-26.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting wsproto (from simple-websocket>=0.10.0->python-engineio>=4.11.0->python-socketio<6.0.0,>=5.16.0->nanobot-ai)
+  Obtaining dependency information for wsproto from https://files.pythonhosted.org/packages/a4/f5/10b68b7b1544245097b2a1b8238f66f2fc6dcaeb24ba5d917f52bd2eed4f/wsproto-1.3.2-py3-none-any.whl.metadata
+  Using cached wsproto-1.3.2-py3-none-any.whl.metadata (5.2 kB)
+Collecting tzdata (from tzlocal>=3.0->APScheduler->qq-botpy<2.0.0,>=1.2.0->nanobot-ai)
+  Obtaining dependency information for tzdata from https://files.pythonhosted.org/packages/c7/b0/003792df09decd6849a5e39c28b513c06e84436a54440380862b5aeff25d/tzdata-2025.3-py2.py3-none-any.whl.metadata
+  Using cached tzdata-2025.3-py2.py3-none-any.whl.metadata (1.4 kB)
+Collecting pycparser (from cffi>=2.0.0->cryptography>=3.4.0->pyjwt[crypto]>=2.10.1->mcp<2.0.0,>=1.26.0->nanobot-ai)
+  Obtaining dependency information for pycparser from https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl.metadata
+  Using cached pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+Downloading nanobot_ai-0.1.4.post3-py3-none-any.whl (154 kB)
+   ---------------------------------------- 154.1/154.1 kB 2.3 MB/s eta 0:00:00
+Downloading python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+Downloading openai-2.26.0-py3-none-any.whl (1.1 MB)
+   ---------------------------------------- 1.1/1.1 MB 3.4 MB/s eta 0:00:00
+Downloading ollama-0.6.1-py3-none-any.whl (14 kB)
+Using cached httpx-0.28.1-py3-none-any.whl (73 kB)
+Using cached httpcore-1.0.9-py3-none-any.whl (78 kB)
+Using cached psutil-7.2.2-cp37-abi3-win_amd64.whl (137 kB)
+Using cached anyio-4.12.1-py3-none-any.whl (113 kB)
+Using cached croniter-6.0.0-py2.py3-none-any.whl (25 kB)
+Using cached dingtalk_stream-0.24.3-py3-none-any.whl (27 kB)
+Using cached distro-1.9.0-py3-none-any.whl (20 kB)
+Using cached idna-3.11-py3-none-any.whl (71 kB)
+Using cached jiter-0.13.0-cp312-cp312-win_amd64.whl (205 kB)
+Downloading json_repair-0.58.4-py3-none-any.whl (41 kB)
+   ---------------------------------------- 41.6/41.6 kB ? eta 0:00:00
+Using cached lark_oapi-1.5.3-py3-none-any.whl (7.0 MB)
+Downloading litellm-1.82.0-py3-none-any.whl (14.9 MB)
+   ---------------------------------------- 14.9/14.9 MB 5.0 MB/s eta 0:00:00
+Using cached loguru-0.7.3-py3-none-any.whl (61 kB)
+Using cached mcp-1.26.0-py3-none-any.whl (233 kB)
+Using cached msgpack-1.1.2-cp312-cp312-win_amd64.whl (72 kB)
+Using cached oauth_cli_kit-0.1.3-py3-none-any.whl (11 kB)
+Using cached prompt_toolkit-3.0.52-py3-none-any.whl (391 kB)
+Using cached pydantic-2.12.5-py3-none-any.whl (463 kB)
+Using cached pydantic_core-2.41.5-cp312-cp312-win_amd64.whl (2.0 MB)
+Using cached pydantic_settings-2.13.1-py3-none-any.whl (58 kB)
+Using cached python_socketio-5.16.1-py3-none-any.whl (82 kB)
+Using cached qq_botpy-1.2.1-py3-none-any.whl (51 kB)
+Using cached readability_lxml-0.8.4.1-py3-none-any.whl (19 kB)
+Using cached rich-14.3.3-py3-none-any.whl (310 kB)
+Using cached slack_sdk-3.40.1-py2.py3-none-any.whl (313 kB)
+Downloading slackify_markdown-0.2.2-py3-none-any.whl (6.7 kB)
+Using cached socksio-1.0.0-py3-none-any.whl (12 kB)
+Using cached tqdm-4.67.3-py3-none-any.whl (78 kB)
+Using cached typer-0.24.1-py3-none-any.whl (56 kB)
+Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Using cached websocket_client-1.9.0-py3-none-any.whl (82 kB)
+Using cached websockets-16.0-cp312-cp312-win_amd64.whl (178 kB)
+Using cached certifi-2026.2.25-py3-none-any.whl (153 kB)
+Using cached sniffio-1.3.1-py3-none-any.whl (10 kB)
+Using cached aiohttp-3.13.3-cp312-cp312-win_amd64.whl (455 kB)
+Using cached annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+Using cached annotated_types-0.7.0-py3-none-any.whl (13 kB)
+Using cached bidict-0.23.1-py3-none-any.whl (32 kB)
+Using cached click-8.3.1-py3-none-any.whl (108 kB)
+Using cached colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+Using cached fastuuid-0.14.0-cp312-cp312-win_amd64.whl (156 kB)
+Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+Using cached httpx_sse-0.4.3-py3-none-any.whl (9.0 kB)
+Using cached importlib_metadata-8.7.1-py3-none-any.whl (27 kB)
+Using cached jinja2-3.1.6-py3-none-any.whl (134 kB)
+Using cached jsonschema-4.26.0-py3-none-any.whl (90 kB)
+Using cached markdown_it_py-4.0.0-py3-none-any.whl (87 kB)
+Downloading platformdirs-4.9.4-py3-none-any.whl (21 kB)
+Using cached pygments-2.19.2-py3-none-any.whl (1.2 MB)
+Using cached python_engineio-4.13.1-py3-none-any.whl (59 kB)
+Using cached python_multipart-0.0.22-py3-none-any.whl (24 kB)
+Downloading pytz-2026.1.post1-py2.py3-none-any.whl (510 kB)
+   ---------------------------------------- 510.5/510.5 kB 4.0 MB/s eta 0:00:00
+Using cached pywin32-311-cp312-cp312-win_amd64.whl (9.5 MB)
+Using cached requests-2.32.5-py3-none-any.whl (64 kB)
+Using cached shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+Using cached sse_starlette-3.3.2-py3-none-any.whl (14 kB)
+Using cached starlette-0.52.1-py3-none-any.whl (74 kB)
+Using cached tiktoken-0.12.0-cp312-cp312-win_amd64.whl (878 kB)
+Using cached typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+Using cached uvicorn-0.41.0-py3-none-any.whl (68 kB)
+Using cached win32_setctime-1.2.0-py3-none-any.whl (4.1 kB)
+Using cached apscheduler-3.11.2-py3-none-any.whl (64 kB)
+Downloading chardet-7.0.1-cp312-cp312-win_amd64.whl (524 kB)
+   ---------------------------------------- 524.3/524.3 kB 4.7 MB/s eta 0:00:00
+Using cached cssselect-1.4.0-py3-none-any.whl (18 kB)
+Using cached pycryptodome-3.23.0-cp37-abi3-win_amd64.whl (1.8 MB)
+Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+Using cached python_socks-2.8.1-py3-none-any.whl (55 kB)
+Using cached python_telegram_bot-22.6-py3-none-any.whl (737 kB)
+Using cached pyyaml-6.0.3-cp312-cp312-win_amd64.whl (154 kB)
+Using cached requests_toolbelt-1.0.0-py2.py3-none-any.whl (54 kB)
+Using cached tokenizers-0.22.2-cp39-abi3-win_amd64.whl (2.7 MB)
+Using cached wcwidth-0.6.0-py3-none-any.whl (94 kB)
+Using cached aiohappyeyeballs-2.6.1-py3-none-any.whl (15 kB)
+Using cached aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+Using cached attrs-25.4.0-py3-none-any.whl (67 kB)
+Downloading charset_normalizer-3.4.5-cp312-cp312-win_amd64.whl (142 kB)
+   ---------------------------------------- 142.9/142.9 kB 4.3 MB/s eta 0:00:00
+Using cached cryptography-46.0.5-cp311-abi3-win_amd64.whl (3.5 MB)
+Using cached frozenlist-1.8.0-cp312-cp312-win_amd64.whl (44 kB)
+Using cached huggingface_hub-1.5.0-py3-none-any.whl (596 kB)
+Using cached jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+Using cached markupsafe-3.0.3-cp312-cp312-win_amd64.whl (15 kB)
+Using cached mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+Using cached multidict-6.7.1-cp312-cp312-win_amd64.whl (46 kB)
+Using cached propcache-0.4.1-cp312-cp312-win_amd64.whl (41 kB)
+Using cached referencing-0.37.0-py3-none-any.whl (26 kB)
+Using cached regex-2026.2.28-cp312-cp312-win_amd64.whl (277 kB)
+Using cached rpds_py-0.30.0-cp312-cp312-win_amd64.whl (240 kB)
+Using cached simple_websocket-1.1.0-py3-none-any.whl (13 kB)
+Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+Using cached tzlocal-5.3.1-py3-none-any.whl (18 kB)
+Using cached urllib3-2.6.3-py3-none-any.whl (131 kB)
+Downloading yarl-1.23.0-cp312-cp312-win_amd64.whl (87 kB)
+   ---------------------------------------- 87.7/87.7 kB 4.8 MB/s eta 0:00:00
+Using cached zipp-3.23.0-py3-none-any.whl (10 kB)
+Using cached lxml-6.0.2-cp312-cp312-win_amd64.whl (4.0 MB)
+Using cached pyjwt-2.11.0-py3-none-any.whl (28 kB)
+Using cached cffi-2.0.0-cp312-cp312-win_amd64.whl (183 kB)
+Downloading filelock-3.25.0-py3-none-any.whl (26 kB)
+Using cached fsspec-2026.2.0-py3-none-any.whl (202 kB)
+Using cached hf_xet-1.3.2-cp37-abi3-win_amd64.whl (3.6 MB)
+Using cached packaging-26.0-py3-none-any.whl (74 kB)
+Using cached tzdata-2025.3-py2.py3-none-any.whl (348 kB)
+Using cached wsproto-1.3.2-py3-none-any.whl (24 kB)
+Using cached pycparser-3.0-py3-none-any.whl (48 kB)
+Installing collected packages: pywin32, pytz, zipp, win32-setctime, websockets, websocket-client, wcwidth, urllib3, tzdata, typing-extensions, socksio, sniffio, slack-sdk, six, shellingham, rpds-py, regex, PyYAML, python-socks, python-multipart, python-dotenv, pyjwt, pygments, pycryptodome, pycparser, psutil, propcache, platformdirs, packaging, multidict, msgpack, mdurl, MarkupSafe, lxml, json-repair, jiter, idna, httpx-sse, hf-xet, h11, fsspec, frozenlist, filelock, fastuuid, distro, cssselect, colorama, charset_normalizer, chardet, certifi, bidict, attrs, annotated-types, annotated-doc, aiohappyeyeballs, yarl, wsproto, tzlocal, typing-inspection, tqdm, requests, referencing, python-dateutil, pydantic-core, prompt-toolkit, markdown-it-py, loguru, jinja2, importlib-metadata, httpcore, click, cffi, anyio, aiosignal, uvicorn, tiktoken, starlette, slackify-markdown, simple-websocket, rich, requests-toolbelt, readability-lxml, pydantic, jsonschema-specifications, httpx, cryptography, croniter, APScheduler, aiohttp, typer, sse-starlette, qq-botpy, python-telegram-bot, python-engineio, pydantic-settings, openai, ollama, oauth-cli-kit, lark-oapi, jsonschema, dingtalk-stream, python-socketio, mcp, huggingface-hub, tokenizers, litellm, nanobot-ai
