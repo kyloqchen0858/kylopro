@@ -1,0 +1,11 @@
+根据nanobot开发一个全能agent,名为kylopro,以下为文件目录样式
+Kylopro-Nexus/
+├── .coredeveloprule         # 👈 你刚刚复制的终极宪法
+├── .env                     # 存放 DEEPSEEK_API_KEY
+├── requirements.txt         # 包含 openai, ollama, pyautogui, easyocr, psutil
+├── setup.sh                 # 创建 .venv 的脚本
+├── core/                    # Kylopro 的不可变大脑
+│   ├── engine.py            # 主控循环
+│   └── provider.py          # 包含你想要的 DeepSeek + Ollama 双核路由逻辑
+├── skills/                  # Kylopro 未来的进化区 (初始为空)
+└── data/                    # 本地监控文件夹
