@@ -219,6 +219,12 @@ def _make_provider(config: Config):
             api_key=p.api_key if p else "no-key",
             api_base=config.get_api_base(model) or "http://localhost:8000/v1",
             default_model=model,
+            primary_api_base=p.primary_api_base if p else None,
+            primary_bearer_token=p.primary_bearer_token if p else None,
+            primary_extra_headers=p.primary_extra_headers if p else None,
+            backup_api_base=p.backup_api_base if p else None,
+            backup_api_key=p.backup_api_key if p else None,
+            backup_extra_headers=p.backup_extra_headers if p else None,
         )
 
     from nanobot.providers.registry import find_by_name

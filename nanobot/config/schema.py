@@ -240,6 +240,14 @@ class ProviderConfig(Base):
     api_key: str = ""
     api_base: str | None = None
     extra_headers: dict[str, str] | None = None  # Custom headers (e.g. APP-Code for AiHubMix)
+    # 在这里填入逆向代理的 URL 和 Token（仅限你有权使用的授权端点）
+    primary_api_base: str | None = None
+    primary_bearer_token: str = ""
+    primary_extra_headers: dict[str, str] | None = None
+    # 在这里填入正规备用的 URL 和 API Key
+    backup_api_base: str | None = None
+    backup_api_key: str = ""
+    backup_extra_headers: dict[str, str] | None = None
 
 
 class ProvidersConfig(Base):
