@@ -159,23 +159,12 @@ class GitHubSkillManager:
         # 为了安全，我们不会硬编码token
 
         token = os.getenv("GITHUB_SKILL_TOKEN")
-        if not token:
-            # 尝试从桌面文件读取（仅用于演示）
-            desktop_file = Path.home() / "Desktop" / "Kylo技能进化.txt"
-            if desktop_file.exists():
-                try:
-                    with open(desktop_file, "r", encoding="utf-8") as f:
-                        content = f.read()
-                        # 简单提取token（实际应该用更安全的方式）
-                        import re
-                        tokens = re.findall(r'ghp_[a-zA-Z0-9]+', content)
-                        if tokens:
-                            token = tokens[-1]  # 使用最后一个token
-                except Exception:
-                    pass
 
         if not token:
-            raise ValueError("未找到GitHub Token。请设置GITHUB_SKILL_TOKEN环境变量")
+            raise ValueError(
+                "未找到GitHub Token。请在 .env 文件中设置 GITHUB_SKILL_TOKEN 环境变量。\n"
+                "申请地址：https://github.com/settings/tokens"
+            )
 
         return GitHubSkillConfig(
             token=token,
