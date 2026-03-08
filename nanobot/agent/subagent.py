@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import uuid
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,7 @@ class SubagentManager:
         self.restrict_to_workspace = restrict_to_workspace
         self._running_tasks: dict[str, asyncio.Task[None]] = {}
         self._session_tasks: dict[str, set[str]] = {}  # session_key -> {task_id, ...}
+        self.task_bridge = None
     
     async def spawn(
         self,
@@ -57,6 +59,21 @@ class SubagentManager:
         task_id = str(uuid.uuid4())[:8]
         display_label = label or task[:30] + ("..." if len(task) > 30 else "")
         origin = {"channel": origin_channel, "chat_id": origin_chat_id}
+
+        self._write_task_state(
+            reset=True,
+            task_id=task_id,
+            title=display_label,
+            status="queued",
+            owner="subagent",
+            progress=0,
+            current_step="queued",
+            summary=f"Queued background task: {display_label}",
+            detail=task,
+            max_iterations=15,
+            append_history="Subagent task queued",
+            clear_interrupt=True,
+        )
 
         bg_task = asyncio.create_task(
             self._run_subagent(task_id, task, display_label, origin)
@@ -86,6 +103,17 @@ class SubagentManager:
     ) -> None:
         """Execute the subagent task and announce the result."""
         logger.info("Subagent [{}] starting task: {}", task_id, label)
+        self._write_task_state(
+            task_id=task_id,
+            title=label,
+            status="running",
+            owner="subagent",
+            progress=5,
+            current_step="starting",
+            summary=f"Background task running: {label}",
+            detail=task,
+            append_history="Subagent started",
+        )
         
         try:
             # Build subagent tools (no message tool, no spawn tool)
@@ -117,7 +145,25 @@ class SubagentManager:
             final_result: str | None = None
             
             while iteration < max_iterations:
+                if self._interrupt_requested():
+                    final_result = "Task interrupted after receiving interrupt flag from main agent."
+                    self._write_task_state(
+                        status="interrupted",
+                        current_step="stopping",
+                        summary=f"Task interrupted: {label}",
+                        detail=final_result,
+                        append_history="Interrupt flag detected by subagent",
+                    )
+                    await self._announce_result(task_id, label, task, final_result, origin, "interrupted")
+                    return
+
                 iteration += 1
+                self._write_task_state(
+                    status="running",
+                    progress=min(95, max(5, int(iteration / max_iterations * 100))),
+                    current_step=f"iteration {iteration}",
+                    summary=f"Background task running: {label}",
+                )
                 
                 response = await self.provider.chat(
                     messages=messages,
@@ -126,7 +172,12 @@ class SubagentManager:
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                 )
-                
+
+                if response.finish_reason == "error":
+                    logger.error("Subagent [{}] provider error: {}", task_id, (response.content or "")[:200])
+                    final_result = "Task failed: model temporarily unavailable."
+                    break
+
                 if response.has_tool_calls:
                     # Add assistant message with tool calls
                     tool_call_dicts = [
@@ -158,6 +209,42 @@ class SubagentManager:
                             "content": result,
                         })
                 else:
+                    # Intercept tool calls written as text (same as AgentLoop)
+                    from nanobot.agent.loop import AgentLoop
+                    text_calls = AgentLoop._extract_text_tool_calls(
+                        response.content or "", set(tools._tools.keys()),
+                    )
+                    if text_calls:
+                        logger.warning("Subagent [{}] model output {} tool call(s) as text – intercepting", task_id, len(text_calls))
+                        tool_call_dicts = []
+                        for i, (tc_name, tc_args) in enumerate(text_calls):
+                            tool_call_dicts.append({
+                                "id": f"text_{iteration}_{i}",
+                                "type": "function",
+                                "function": {
+                                    "name": tc_name,
+                                    "arguments": json.dumps(tc_args, ensure_ascii=False),
+                                },
+                            })
+                        messages.append({
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": tool_call_dicts,
+                        })
+                        for tc_dict in tool_call_dicts:
+                            fn = tc_dict["function"]
+                            fn_name = fn["name"]
+                            fn_args = json.loads(fn["arguments"])
+                            logger.debug("Subagent [{}] executing (from text): {} with arguments: {}", task_id, fn_name, fn["arguments"])
+                            result = await tools.execute(fn_name, fn_args)
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tc_dict["id"],
+                                "name": fn_name,
+                                "content": result,
+                            })
+                        continue
+
                     final_result = response.content
                     break
             
@@ -165,11 +252,26 @@ class SubagentManager:
                 final_result = "Task completed but no final response was generated."
             
             logger.info("Subagent [{}] completed successfully", task_id)
+            self._write_task_state(
+                status="completed",
+                progress=100,
+                current_step="completed",
+                summary=f"Task completed: {label}",
+                detail=final_result[:2000],
+                append_history="Subagent completed successfully",
+            )
             await self._announce_result(task_id, label, task, final_result, origin, "ok")
             
         except Exception as e:
             error_msg = f"Error: {str(e)}"
             logger.error("Subagent [{}] failed: {}", task_id, e)
+            self._write_task_state(
+                status="failed",
+                current_step="failed",
+                summary=f"Task failed: {label}",
+                detail=error_msg,
+                append_history=f"Subagent failed: {str(e)}",
+            )
             await self._announce_result(task_id, label, task, error_msg, origin, "error")
     
     async def _announce_result(
@@ -182,7 +284,11 @@ class SubagentManager:
         status: str,
     ) -> None:
         """Announce the subagent result to the main agent via the message bus."""
-        status_text = "completed successfully" if status == "ok" else "failed"
+        status_text = {
+            "ok": "completed successfully",
+            "error": "failed",
+            "interrupted": "was interrupted",
+        }.get(status, status)
         
         announce_content = f"""[Subagent '{label}' {status_text}]
 
@@ -240,6 +346,31 @@ Your workspace is at: {self.workspace}
 Skills are available at: {self.workspace}/skills/ (read SKILL.md files as needed)
 
 When you have completed the task, provide a clear summary of your findings or actions."""
+
+    def _get_task_bridge(self):
+        bridge = getattr(self, "task_bridge", None)
+        if bridge and hasattr(bridge, "read_state") and hasattr(bridge, "write_state"):
+            return bridge
+        return None
+
+    def _write_task_state(self, **kwargs: Any) -> None:
+        bridge = self._get_task_bridge()
+        if bridge is None:
+            return
+        try:
+            bridge.write_state(**kwargs)
+        except Exception as e:
+            logger.debug("TaskBridge write failed: {}", e)
+
+    def _interrupt_requested(self) -> bool:
+        bridge = self._get_task_bridge()
+        if bridge is None:
+            return False
+        try:
+            return bool(bridge.read_state().get("interrupt_requested"))
+        except Exception as e:
+            logger.debug("TaskBridge read failed: {}", e)
+            return False
     
     async def cancel_by_session(self, session_key: str) -> int:
         """Cancel all subagents for the given session. Returns count cancelled."""

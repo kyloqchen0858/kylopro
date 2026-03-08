@@ -104,6 +104,7 @@ class AgentLoop:
         self._active_tasks: dict[str, list[asyncio.Task]] = {}  # session_key -> tasks
         self._processing_lock = asyncio.Lock()
         self._register_default_tools()
+        self._register_workspace_tools()
 
     def _register_default_tools(self) -> None:
         """Register the default set of tools."""
@@ -122,6 +123,25 @@ class AgentLoop:
         self.tools.register(SpawnTool(manager=self.subagents))
         if self.cron_service:
             self.tools.register(CronTool(self.cron_service))
+
+    def _register_workspace_tools(self) -> None:
+        """Load workspace-level tool plugins from {workspace}/tools_init.py."""
+        tools_init = self.workspace / "tools_init.py"
+        if not tools_init.is_file():
+            return
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("workspace_tools", tools_init)
+        if not spec or not spec.loader:
+            return
+        try:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            register_fn = getattr(mod, "register_tools", None)
+            if callable(register_fn):
+                register_fn(self)
+                logger.info("Loaded workspace tools from {}", tools_init)
+        except Exception as e:
+            logger.warning("Failed to load workspace tools: {}", e)
 
     async def _connect_mcp(self) -> None:
         """Connect to configured MCP servers (one-time, lazy)."""
@@ -169,6 +189,37 @@ class AgentLoop:
             return f'{tc.name}("{val[:40]}…")' if len(val) > 40 else f'{tc.name}("{val}")'
         return ", ".join(_fmt(tc) for tc in tool_calls)
 
+    @staticmethod
+    def _extract_text_tool_calls(text: str, known_tools: set[str]) -> list[tuple[str, dict]]:
+        """Extract tool calls that the model wrote as text instead of using function calling API.
+
+        Detects patterns like ``functions.tool_name({...})`` and parses them into
+        (name, arguments) pairs.  Only tools present in *known_tools* are considered.
+        """
+        results: list[tuple[str, dict]] = []
+        for m in re.finditer(r'functions\.(\w+)\s*\(', text):
+            name = m.group(1)
+            if name not in known_tools:
+                continue
+            start = text.find('{', m.end())
+            if start == -1:
+                continue
+            depth, end = 0, start
+            for i in range(start, len(text)):
+                if text[i] == '{':
+                    depth += 1
+                elif text[i] == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            try:
+                args = json.loads(text[start:end])
+                results.append((name, args))
+            except (json.JSONDecodeError, ValueError):
+                continue
+        return results
+
     async def _run_agent_loop(
         self,
         initial_messages: list[dict],
@@ -190,6 +241,13 @@ class AgentLoop:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
             )
+
+            # If provider returned an error (e.g. rate limit after retries),
+            # log it and break rather than sending raw error text to user.
+            if response.finish_reason == "error":
+                logger.error("Provider error: {}", (response.content or "")[:200])
+                final_content = "⚠️ 当前模型暂时不可用，请稍后重试。"
+                break
 
             if response.has_tool_calls:
                 if on_progress:
@@ -224,6 +282,43 @@ class AgentLoop:
                     )
             else:
                 clean = self._strip_think(response.content)
+
+                # Intercept tool calls that the model wrote as text instead of
+                # using the function calling API (common with some models).
+                text_calls = self._extract_text_tool_calls(
+                    clean or "", set(self.tools._tools.keys()),
+                )
+                if text_calls:
+                    logger.warning(
+                        "Model output {} tool call(s) as text – intercepting",
+                        len(text_calls),
+                    )
+                    tool_call_dicts = []
+                    for i, (tc_name, tc_args) in enumerate(text_calls):
+                        tool_call_dicts.append({
+                            "id": f"text_{iteration}_{i}",
+                            "type": "function",
+                            "function": {
+                                "name": tc_name,
+                                "arguments": json.dumps(tc_args, ensure_ascii=False),
+                            },
+                        })
+                    messages = self.context.add_assistant_message(
+                        messages, None, tool_call_dicts,
+                        reasoning_content=response.reasoning_content,
+                    )
+                    for tc_dict in tool_call_dicts:
+                        fn = tc_dict["function"]
+                        fn_name = fn["name"]
+                        fn_args = json.loads(fn["arguments"])
+                        tools_used.append(fn_name)
+                        logger.info("Tool call (from text): {}({})", fn_name, fn["arguments"][:200])
+                        result = await self.tools.execute(fn_name, fn_args)
+                        messages = self.context.add_tool_result(
+                            messages, tc_dict["id"], fn_name, result,
+                        )
+                    continue
+
                 messages = self.context.add_assistant_message(
                     messages, clean, reasoning_content=response.reasoning_content,
                 )

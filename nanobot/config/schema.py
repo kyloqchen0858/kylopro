@@ -31,6 +31,7 @@ class TelegramConfig(Base):
     allow_from: list[str] = Field(default_factory=list)  # Allowed user IDs or usernames
     proxy: str | None = None  # HTTP/SOCKS5 proxy URL, e.g. "http://127.0.0.1:7890" or "socks5://127.0.0.1:1080"
     reply_to_message: bool = False  # If true, bot replies quote the original message
+    drop_pending_updates: bool = True  # If true, discard Telegram messages sent while the bot was offline
 
 
 class FeishuConfig(Base):
@@ -222,6 +223,7 @@ class AgentDefaults(Base):
     workspace: str = "~/.nanobot/workspace"
     model: str = "anthropic/claude-opus-4-5"
     provider: str = "auto"  # Provider name (e.g. "anthropic", "openrouter") or "auto" for auto-detection
+    fallback_model: str | None = None  # Fallback model when primary hits rate limits or errors
     max_tokens: int = 8192
     temperature: float = 0.1
     max_tool_iterations: int = 40
@@ -277,6 +279,7 @@ class HeartbeatConfig(Base):
 
     enabled: bool = True
     interval_s: int = 30 * 60  # 30 minutes
+    local_model: str | None = None  # Optional local Ollama model for skip/run decision (e.g. "qwen2.5:7b")
 
 
 class GatewayConfig(Base):

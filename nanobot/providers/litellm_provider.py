@@ -1,5 +1,6 @@
 """LiteLLM provider implementation for multi-provider support."""
 
+import asyncio
 import json
 import json_repair
 import os
@@ -10,6 +11,7 @@ from typing import Any
 import litellm
 from litellm import acompletion
 
+from loguru import logger
 from nanobot.providers.base import LLMProvider, LLMResponse, ToolCallRequest
 from nanobot.providers.registry import find_by_model, find_gateway
 
@@ -40,10 +42,16 @@ class LiteLLMProvider(LLMProvider):
         default_model: str = "anthropic/claude-opus-4-5",
         extra_headers: dict[str, str] | None = None,
         provider_name: str | None = None,
+        fallback_model: str | None = None,
+        fallback_api_key: str | None = None,
+        fallback_api_base: str | None = None,
     ):
         super().__init__(api_key, api_base)
         self.default_model = default_model
         self.extra_headers = extra_headers or {}
+        self.fallback_model = fallback_model
+        self.fallback_api_key = fallback_api_key
+        self.fallback_api_base = fallback_api_base
         
         # Detect gateway / local deployment.
         # provider_name (from config key) is the primary signal;
@@ -232,6 +240,38 @@ class LiteLLMProvider(LLMProvider):
             response = await acompletion(**kwargs)
             return self._parse_response(response)
         except Exception as e:
+            is_rate_limit = "rate" in str(e).lower() and ("limit" in str(e).lower() or "429" in str(e))
+
+            # Retry once after a short backoff for rate-limit errors
+            if is_rate_limit:
+                logger.warning("Rate limited on {} – retrying in 5s", original_model)
+                await asyncio.sleep(5)
+                try:
+                    response = await acompletion(**kwargs)
+                    return self._parse_response(response)
+                except Exception:
+                    pass  # Fall through to fallback
+
+            # Try fallback model if configured
+            if self.fallback_model and original_model != self.fallback_model:
+                logger.warning("Primary model {} failed, falling back to {}", original_model, self.fallback_model)
+                fb_kwargs = dict(kwargs)
+                fb_kwargs["model"] = self._resolve_model(self.fallback_model)
+                if self.fallback_api_key:
+                    fb_kwargs["api_key"] = self.fallback_api_key
+                if self.fallback_api_base:
+                    fb_kwargs["api_base"] = self.fallback_api_base
+                elif "api_base" in fb_kwargs:
+                    del fb_kwargs["api_base"]
+                try:
+                    response = await acompletion(**fb_kwargs)
+                    return self._parse_response(response)
+                except Exception as fb_e:
+                    return LLMResponse(
+                        content=f"Error calling LLM (primary: {e}, fallback: {fb_e})",
+                        finish_reason="error",
+                    )
+
             # Return error as content for graceful handling
             return LLMResponse(
                 content=f"Error calling LLM: {str(e)}",

@@ -59,6 +59,7 @@ class HeartbeatService:
         on_notify: Callable[[str], Coroutine[Any, Any, None]] | None = None,
         interval_s: int = 30 * 60,
         enabled: bool = True,
+        local_provider: "LLMProvider | None" = None,
     ):
         self.workspace = workspace
         self.provider = provider
@@ -67,6 +68,9 @@ class HeartbeatService:
         self.on_notify = on_notify
         self.interval_s = interval_s
         self.enabled = enabled
+        # local_provider is used only for the lightweight _decide phase (skip/run)
+        # keeping cloud provider intact for the full on_execute path
+        self._local_provider = local_provider
         self._running = False
         self._task: asyncio.Task | None = None
 
@@ -85,9 +89,16 @@ class HeartbeatService:
     async def _decide(self, content: str) -> tuple[str, str]:
         """Phase 1: ask LLM to decide skip/run via virtual tool call.
 
+        Uses local_provider (Ollama) if available — zero cloud API cost.
+        Falls back to main provider if local is unavailable.
         Returns (action, tasks) where action is 'skip' or 'run'.
         """
-        response = await self.provider.chat(
+        # Prefer local model for this lightweight decision (zero cost)
+        decision_provider = self._local_provider or self.provider
+        # Local provider uses its own default_model; cloud uses self.model
+        decision_model = self.model if self._local_provider is None else None
+
+        response = await decision_provider.chat(
             messages=[
                 {"role": "system", "content": "You are a heartbeat agent. Call the heartbeat tool to report your decision."},
                 {"role": "user", "content": (
@@ -96,10 +107,15 @@ class HeartbeatService:
                 )},
             ],
             tools=_HEARTBEAT_TOOL,
-            model=self.model,
+            model=decision_model or self.model,
         )
 
         if not response.has_tool_calls:
+            # Local models may return text instead of tool call — treat non-empty content as 'run'
+            if self._local_provider and response.content:
+                text = (response.content or "").lower()
+                action = "run" if any(w in text for w in ("run", "active", "task", "yes")) else "skip"
+                return action, response.content[:200]
             return "skip", ""
 
         args = response.tool_calls[0].arguments

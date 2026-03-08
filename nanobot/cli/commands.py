@@ -234,12 +234,25 @@ def _make_provider(config: Config):
         console.print("Set one in ~/.nanobot/config.json under providers section")
         raise typer.Exit(1)
 
+    # Resolve fallback model + its provider credentials
+    fallback_model = config.agents.defaults.fallback_model
+    fallback_api_key = None
+    fallback_api_base = None
+    if fallback_model:
+        fb_provider = config.get_provider(fallback_model)
+        if fb_provider:
+            fallback_api_key = fb_provider.api_key or None
+            fallback_api_base = fb_provider.api_base or config.get_api_base(fallback_model)
+
     return LiteLLMProvider(
         api_key=p.api_key if p else None,
         api_base=config.get_api_base(model),
         default_model=model,
         extra_headers=p.extra_headers if p else None,
         provider_name=provider_name,
+        fallback_model=fallback_model,
+        fallback_api_key=fallback_api_key,
+        fallback_api_base=fallback_api_base,
     )
 
 
@@ -361,6 +374,24 @@ def gateway(
         await bus.publish_outbound(OutboundMessage(channel=channel, chat_id=chat_id, content=response))
 
     hb_cfg = config.gateway.heartbeat
+
+    # Try to use local Ollama for the lightweight skip/run decision (zero cloud API cost).
+    # Loaded dynamically from workspace tools_init.py to avoid coupling nanobot to Kylopro-Nexus.
+    _hb_local_provider = None
+    if hb_cfg.local_model:
+        _tools_init = config.workspace_path / "tools_init.py"
+        if _tools_init.is_file():
+            try:
+                import importlib.util as _ilu
+                _spec = _ilu.spec_from_file_location("_ws_tools_hb", _tools_init)
+                _mod = _ilu.module_from_spec(_spec)
+                _spec.loader.exec_module(_mod)
+                _create_fn = getattr(_mod, "create_local_provider", None)
+                if callable(_create_fn):
+                    _hb_local_provider = _create_fn(hb_cfg.local_model)
+            except Exception as _e:
+                logger.warning("Heartbeat local provider load failed: {}", _e)
+
     heartbeat = HeartbeatService(
         workspace=config.workspace_path,
         provider=provider,
@@ -369,6 +400,7 @@ def gateway(
         on_notify=on_heartbeat_notify,
         interval_s=hb_cfg.interval_s,
         enabled=hb_cfg.enabled,
+        local_provider=_hb_local_provider,
     )
     
     if channels.enabled_channels:
@@ -683,6 +715,8 @@ def _get_bridge_dir() -> Path:
     """Get the bridge directory, setting it up if needed."""
     import shutil
     import subprocess
+
+    npm_cmd = shutil.which("npm.cmd") or shutil.which("npm")
     
     # User's bridge location
     user_bridge = Path.home() / ".nanobot" / "bridge"
@@ -692,7 +726,7 @@ def _get_bridge_dir() -> Path:
         return user_bridge
     
     # Check for npm
-    if not shutil.which("npm"):
+    if not npm_cmd:
         console.print("[red]npm not found. Please install Node.js >= 18.[/red]")
         raise typer.Exit(1)
     
@@ -722,10 +756,10 @@ def _get_bridge_dir() -> Path:
     # Install and build
     try:
         console.print("  Installing dependencies...")
-        subprocess.run(["npm", "install"], cwd=user_bridge, check=True, capture_output=True)
+        subprocess.run([npm_cmd, "install"], cwd=user_bridge, check=True, capture_output=True)
         
         console.print("  Building...")
-        subprocess.run(["npm", "run", "build"], cwd=user_bridge, check=True, capture_output=True)
+        subprocess.run([npm_cmd, "run", "build"], cwd=user_bridge, check=True, capture_output=True)
         
         console.print("[green]✓[/green] Bridge ready\n")
     except subprocess.CalledProcessError as e:
@@ -741,6 +775,7 @@ def _get_bridge_dir() -> Path:
 def channels_login():
     """Link device via QR code."""
     import subprocess
+    import shutil
     from nanobot.config.loader import load_config
     
     config = load_config()
@@ -752,9 +787,14 @@ def channels_login():
     env = {**os.environ}
     if config.channels.whatsapp.bridge_token:
         env["BRIDGE_TOKEN"] = config.channels.whatsapp.bridge_token
+
+    npm_cmd = shutil.which("npm.cmd") or shutil.which("npm")
+    if not npm_cmd:
+        console.print("[red]npm not found. Please install Node.js.[/red]")
+        raise typer.Exit(1)
     
     try:
-        subprocess.run(["npm", "start"], cwd=bridge_dir, check=True, env=env)
+        subprocess.run([npm_cmd, "start"], cwd=bridge_dir, check=True, env=env)
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Bridge failed: {e}[/red]")
     except FileNotFoundError:
