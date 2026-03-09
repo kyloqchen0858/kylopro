@@ -24,6 +24,7 @@ platforms/feishu.py — 飞书（Lark）OAuth2 平台适配器
     "user_open_id":      "ou_xxx",     # 可选：发 DM 的目标用户 open_id
     "folder_token":      "fldxxxx",    # 可选：默认存放文档的文件夹
     "chat_id":           "oc_xxx",     # 可选：默认消息投递的群组 chat_id
+    "tenant_url":        "https://xxx.feishu.cn",  # 必填：企业租户 URL，用于生成文档可访问链接
   }
 
 API 文档参考：
@@ -131,8 +132,9 @@ def refresh_feishu_app_token(creds: dict) -> dict:
 # ── 文档内容：Markdown → 飞书块 ──────────────────────────────
 def markdown_to_feishu_blocks(markdown: str) -> list[dict]:
     """
-    简单 Markdown → 飞书文档 blocks 转换。
-    支持：# ## ### 标题，普通段落，--- 分割线，空行忽略。
+    稳定模式：Markdown 文本按行转换为普通段落块。
+    说明：复杂 block schema 在不同租户容易触发 invalid param，
+    这里优先保证可写入成功，再逐步扩展富文本能力。
     """
     blocks = []
     for line in markdown.split("\n"):
@@ -140,18 +142,20 @@ def markdown_to_feishu_blocks(markdown: str) -> list[dict]:
         if not stripped:
             continue
 
-        if stripped.startswith("### "):
-            blocks.append(_heading_block(stripped[4:], level=3))
-        elif stripped.startswith("## "):
-            blocks.append(_heading_block(stripped[3:], level=2))
-        elif stripped.startswith("# "):
-            blocks.append(_heading_block(stripped[2:], level=1))
-        elif stripped == "---":
-            blocks.append({"block_type": 22})  # divider
-        elif stripped.startswith("- ") or stripped.startswith("* "):
-            blocks.append(_bullet_block(stripped[2:]))
-        else:
-            blocks.append(_text_block(stripped))
+        # Strip lightweight markdown markers while preserving readable content.
+        plain = stripped
+        if plain.startswith("### "):
+            plain = plain[4:]
+        elif plain.startswith("## "):
+            plain = plain[3:]
+        elif plain.startswith("# "):
+            plain = plain[2:]
+        elif plain.startswith("- ") or plain.startswith("* "):
+            plain = f"• {plain[2:]}"
+        elif plain == "---":
+            plain = "----------------"
+
+        blocks.append(_text_block(plain))
 
     return blocks
 
@@ -161,7 +165,7 @@ def _text_block(text: str) -> dict:
     return {
         "block_type": 2,
         "text": {
-            "elements": [{"text_run": {"content": text}}],
+            "elements": [{"text_run": {"content": text, "text_element_style": {}}}],
             "style": {},
         },
     }
@@ -198,15 +202,18 @@ class FeishuAdapter:
     """
 
     @staticmethod
-    def create_document(token: str, title: str, folder_token: str = "") -> dict:
+    def create_document(token: str, title: str, folder_token: str = "", tenant_url: str = "") -> dict:
         """
         在飞书云空间创建新文档。
+
+        Args:
+            tenant_url: 租户 URL，如 "https://xxx.feishu.cn"。设置后生成可点击链接。
 
         Returns:
             {
               "document_id": "...",
               "title": "...",
-              "url": "https://...",
+              "url": "https://xxx.feishu.cn/docx/...",
             }
         """
         body: dict = {"title": title}
@@ -216,10 +223,19 @@ class FeishuAdapter:
         resp = _feishu_request("POST", CREATE_DOC_URL, token, data=body)
         doc = resp.get("data", {}).get("document", {})
         doc_id = doc.get("document_id", "")
+        # 飞书文档的用户可访问链接格式是 {tenant_url}/docx/{doc_id}
+        # tenant_url 需要从 vault 配置读取，每个企业的 subdomain 不同
+        if doc_id and tenant_url:
+            doc_url = f"{tenant_url.rstrip('/')}/docx/{doc_id}"
+        elif doc_id:
+            # 如果未配置 tenant_url，返回 doc_id 和提示
+            doc_url = f"(请配置 tenant_url 以生成链接) document_id={doc_id}"
+        else:
+            doc_url = ""
         return {
             "document_id": doc_id,
             "title": doc.get("title", title),
-            "url": f"https://open.feishu.cn/document/{doc_id}" if doc_id else "",
+            "url": doc_url,
         }
 
     @staticmethod
@@ -233,7 +249,8 @@ class FeishuAdapter:
             return {"status": "no_content"}
 
         url = APPEND_BLOCKS_URL.format(doc_id=document_id, block_id=document_id)
-        resp = _feishu_request("PATCH", url, token, data={"children": blocks})
+        # Feishu docx children API requires POST; PATCH may return route-level 404.
+        resp = _feishu_request("POST", url, token, data={"index": -1, "children": blocks})
         count = len(resp.get("data", {}).get("children", []))
         return {"status": "ok", "blocks_written": count}
 
@@ -330,6 +347,7 @@ def create_and_notify(
     notify_open_id: str = "",
     notify_chat_id: str = "",
     folder_token: str = "",
+    tenant_url: str = "",
 ) -> dict:
     """
     一站式：创建飞书文档 + 写入内容 + 发消息通知用户。
@@ -337,46 +355,51 @@ def create_and_notify(
     """
     result: dict = {"success": False}
 
-    # 1. 创建文档
-    doc = FeishuAdapter.create_document(token, title, folder_token)
-    result["document_id"] = doc["document_id"]
-    result["document_url"] = doc["url"]
-    result["title"] = doc["title"]
+    try:
+        # 1. 创建文档
+        doc = FeishuAdapter.create_document(token, title, folder_token, tenant_url=tenant_url)
+        result["document_id"] = doc["document_id"]
+        result["document_url"] = doc["url"]
+        result["title"] = doc["title"]
 
-    # 2. 写入内容
-    if markdown_content.strip():
-        append_result = FeishuAdapter.append_content(
-            token, doc["document_id"], markdown_content
-        )
-        result["blocks_written"] = append_result.get("blocks_written", 0)
-
-    result["success"] = True
-
-    # 3. 发通知（optional）
-    if notify_open_id and doc["url"]:
-        try:
-            FeishuAdapter.share_doc_card(
-                token,
-                receive_id=notify_open_id,
-                doc_url=doc["url"],
-                doc_title=title,
-                receive_id_type="open_id",
+        # 2. 写入内容
+        if markdown_content.strip():
+            append_result = FeishuAdapter.append_content(
+                token, doc["document_id"], markdown_content
             )
-            result["notified"] = True
-        except Exception as e:
-            result["notify_error"] = str(e)
-    elif notify_chat_id and doc["url"]:
-        try:
-            FeishuAdapter.share_doc_card(
-                token,
-                receive_id=notify_chat_id,
-                doc_url=doc["url"],
-                doc_title=title,
-                receive_id_type="chat_id",
-            )
-            result["notified"] = True
-        except Exception as e:
-            result["notify_error"] = str(e)
+            result["blocks_written"] = append_result.get("blocks_written", 0)
+
+        result["success"] = True
+
+        # 3. 发通知（optional）
+        if notify_open_id and doc["url"]:
+            try:
+                FeishuAdapter.share_doc_card(
+                    token,
+                    receive_id=notify_open_id,
+                    doc_url=doc["url"],
+                    doc_title=title,
+                    receive_id_type="open_id",
+                )
+                result["notified"] = True
+            except Exception as e:
+                result["notify_error"] = str(e)
+        elif notify_chat_id and doc["url"]:
+            try:
+                FeishuAdapter.share_doc_card(
+                    token,
+                    receive_id=notify_chat_id,
+                    doc_url=doc["url"],
+                    doc_title=title,
+                    receive_id_type="chat_id",
+                )
+                result["notified"] = True
+            except Exception as e:
+                result["notify_error"] = str(e)
+
+    except Exception as e:
+        result["error"] = str(e)
+        result["success"] = False
 
     return result
 

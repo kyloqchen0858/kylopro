@@ -26,9 +26,15 @@ OAuth2VaultDB — SQLite + Fernet 加密凭证保险箱
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import json
 import os
+import platform
+import secrets
 import sqlite3
+import subprocess
 import time
 from pathlib import Path
 from typing import Optional
@@ -41,12 +47,67 @@ except ImportError:
 
 
 # ── 路径配置 ──────────────────────────────────────────────────
-BASE_DIR  = Path(os.environ.get("KYLOPRO_DIR", Path.home() / "Kylopro-Nexus"))
+def _resolve_base_dir() -> Path:
+    """Resolve Kylopro root robustly so restart command differences do not cause amnesia."""
+    env_dir = os.environ.get("KYLOPRO_DIR", "").strip()
+    if env_dir:
+        return Path(env_dir).expanduser().resolve()
+
+    # skills/oauth2_vault/vault.py -> Kylopro-Nexus/
+    repo_guess = Path(__file__).resolve().parents[2]
+    cwd = Path.cwd().resolve()
+    home_guess = Path.home() / "Kylopro-Nexus"
+    for candidate in (repo_guess, cwd, home_guess):
+        if (candidate / "brain").exists() and (candidate / "skills").exists():
+            return candidate
+    return repo_guess
+
+
+BASE_DIR  = _resolve_base_dir()
 VAULT_DIR = BASE_DIR / "brain" / "vault"
 VAULT_DB  = VAULT_DIR / "oauth2_credentials.db"
 KEY_FILE  = VAULT_DIR / ".oauth2_vault_key"   # 256-bit Fernet key，不入 git
 
 TOKEN_REFRESH_BUFFER_SEC = 300   # 提前 5 分钟视为过期，给刷新留余量
+
+
+# ── 密钥文件保护 ──────────────────────────────────────────────
+def _protect_key_file(path: Path) -> None:
+    """跨平台保护密钥文件：Linux/Mac 用 chmod 600，Windows 用 attrib +H。"""
+    try:
+        if platform.system() == 'Windows':
+            subprocess.run(['attrib', '+H', str(path)], check=False,
+                           capture_output=True, timeout=5)
+        else:
+            path.chmod(0o600)
+    except Exception:
+        pass
+
+
+# ── stdlib-only 加解密（无 cryptography 依赖时使用） ──────────
+def _stdlib_encrypt(master_key: bytes, data: bytes) -> bytes:
+    """PBKDF2 派生密钥 + XOR 流加密 + HMAC 完整性校验。stdlib only。"""
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac('sha256', master_key, salt, 100_000)
+    nonce = secrets.token_bytes(16)
+    stream = hashlib.pbkdf2_hmac('sha256', dk, nonce, 1, dklen=len(data))
+    ct = bytes(a ^ b for a, b in zip(data, stream))
+    mac = hmac.new(dk, salt + nonce + ct, 'sha256').digest()
+    return base64.b64encode(salt + nonce + mac + ct)
+
+
+def _stdlib_decrypt(master_key: bytes, blob: bytes) -> bytes:
+    """解密 _stdlib_encrypt 产生的密文。"""
+    raw = base64.b64decode(blob)
+    if len(raw) < 64:  # 16 salt + 16 nonce + 32 mac
+        raise ValueError("密文数据损坏（长度不足）")
+    salt, nonce, mac_stored, ct = raw[:16], raw[16:32], raw[32:64], raw[64:]
+    dk = hashlib.pbkdf2_hmac('sha256', master_key, salt, 100_000)
+    mac_computed = hmac.new(dk, salt + nonce + ct, 'sha256').digest()
+    if not hmac.compare_digest(mac_stored, mac_computed):
+        raise ValueError("凭证解密失败，可能密钥已更换或数据损坏")
+    stream = hashlib.pbkdf2_hmac('sha256', dk, nonce, 1, dklen=len(ct))
+    return bytes(a ^ b for a, b in zip(ct, stream))
 
 
 # ── 内部工具 ─────────────────────────────────────────────────
@@ -82,8 +143,10 @@ class OAuth2VaultDB:
     def __init__(self) -> None:
         VAULT_DIR.mkdir(parents=True, exist_ok=True)
         self._fernet: Optional["Fernet"] = None
+        raw_key = self._load_or_create_key()
+        self._master_key = base64.urlsafe_b64decode(raw_key)  # 32 bytes
         if _FERNET_AVAILABLE:
-            self._fernet = Fernet(self._load_or_create_key())
+            self._fernet = Fernet(raw_key)
         self._init_db()
 
     # ── 密钥管理 ─────────────────────────────────────────────
@@ -91,18 +154,21 @@ class OAuth2VaultDB:
     def _load_or_create_key(self) -> bytes:
         if KEY_FILE.exists():
             return KEY_FILE.read_bytes()
-        key = Fernet.generate_key()
+        if _FERNET_AVAILABLE:
+            key = Fernet.generate_key()
+        else:
+            # stdlib fallback: 32-byte random key, base64 encoded
+            key = base64.urlsafe_b64encode(secrets.token_bytes(32))
         KEY_FILE.write_bytes(key)
-        try:
-            KEY_FILE.chmod(0o600)
-        except Exception:
-            pass  # Windows 上静默跳过
+        _protect_key_file(KEY_FILE)
         return key
 
     # ── 数据库初始化 ──────────────────────────────────────────
 
     def _init_db(self) -> None:
         with sqlite3.connect(VAULT_DB) as conn:
+            conn.execute('PRAGMA journal_mode=WAL')       # 允许并发读写
+            conn.execute('PRAGMA synchronous=NORMAL')     # 性能和安全的平衡
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS credentials (
                     platform    TEXT PRIMARY KEY,
@@ -117,9 +183,7 @@ class OAuth2VaultDB:
         payload = json.dumps(data, ensure_ascii=False).encode()
         if self._fernet:
             return self._fernet.encrypt(payload)
-        # 无 cryptography 时使用简单 base64（不推荐生产使用）
-        import base64
-        return base64.b64encode(payload)
+        return _stdlib_encrypt(self._master_key, payload)
 
     def _decrypt(self, blob: bytes) -> dict:
         if self._fernet:
@@ -127,8 +191,7 @@ class OAuth2VaultDB:
                 return json.loads(self._fernet.decrypt(blob).decode())
             except Exception:
                 raise ValueError("凭证解密失败，可能密钥已更换或数据损坏")
-        import base64
-        return json.loads(base64.b64decode(blob).decode())
+        return json.loads(_stdlib_decrypt(self._master_key, blob).decode())
 
     # ── CRUD ─────────────────────────────────────────────────
 

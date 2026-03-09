@@ -5,6 +5,9 @@ from typing import Any
 from nanobot.agent.tools.base import Tool
 
 
+_TERMINAL_MARKERS = ("[DONE]", "[FAILED]")
+
+
 class ToolRegistry:
     """
     Registry for agent tools.
@@ -48,6 +51,8 @@ class ToolRegistry:
             if errors:
                 return f"Error: Invalid parameters for tool '{name}': " + "; ".join(errors) + _HINT
             result = await tool.execute(**params)
+            if isinstance(result, str) and any(marker in result for marker in _TERMINAL_MARKERS):
+                return result
             if isinstance(result, str) and result.startswith("Error"):
                 return result + _HINT
             return result

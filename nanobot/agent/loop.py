@@ -6,6 +6,7 @@ import asyncio
 import json
 import re
 from contextlib import AsyncExitStack
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
@@ -44,6 +45,19 @@ class AgentLoop:
     """
 
     _TOOL_RESULT_MAX_CHARS = 500
+    _TERMINAL_TOOL_RESULT_MAX_CHARS = 1500
+    _TERMINAL_MARKERS = ("[DONE]", "[FAILED]")
+    _EXTERNAL_API_TOOLS = {"feishu", "oauth2_vault", "freelance"}
+    _MERGE_WINDOW_SEC = 1.2
+    _AMBIGUOUS_SHORT_LEN = 10
+    _AMBIGUOUS_PATTERNS = (
+        r"^(继续|接着|然后|安排一下|处理一下|搞一下|看下|看看|优化一下|改一下|修一下|推进一下)[。!！\s]*$",
+        r"^(ok|好的|行|继续上班)[。!！\s]*$",
+    )
+    _CONCRETE_HINT_WORDS = (
+        "飞书", "notion", "文档", "消息", "代码", "文件", "日志", "测试", "部署",
+        "配置", "修复", "重启", "search", "grep", "read_file", "exec",
+    )
 
     def __init__(
         self,
@@ -102,9 +116,86 @@ class AgentLoop:
         self._consolidation_tasks: set[asyncio.Task] = set()  # Strong refs to in-flight tasks
         self._consolidation_locks: dict[str, asyncio.Lock] = {}
         self._active_tasks: dict[str, list[asyncio.Task]] = {}  # session_key -> tasks
+        self._pending_messages: dict[str, list[InboundMessage]] = {}
+        self._debounce_tasks: dict[str, asyncio.Task] = {}
         self._processing_lock = asyncio.Lock()
         self._register_default_tools()
         self._register_workspace_tools()
+
+    @staticmethod
+    def _remove_active_task(tasks: dict[str, list[asyncio.Task]], key: str, task: asyncio.Task) -> None:
+        bucket = tasks.get(key, [])
+        if task in bucket:
+            bucket.remove(task)
+
+    async def _cancel_session_tasks(self, session_key: str) -> int:
+        """Cancel all active tasks for a session and return cancellation count."""
+        tasks = self._active_tasks.pop(session_key, [])
+        cancelled = sum(1 for t in tasks if not t.done() and t.cancel())
+        for t in tasks:
+            try:
+                await t
+            except (asyncio.CancelledError, Exception):
+                pass
+        sub_cancelled = await self.subagents.cancel_by_session(session_key)
+        return cancelled + sub_cancelled
+
+    @classmethod
+    def _needs_clarification(cls, text: str) -> bool:
+        raw = (text or "").strip()
+        if not raw:
+            return True
+        if "?" in raw or "？" in raw:
+            return False
+        low = raw.lower()
+        if any(hint in low for hint in cls._CONCRETE_HINT_WORDS):
+            return False
+        if len(raw) <= cls._AMBIGUOUS_SHORT_LEN:
+            return True
+        return any(re.match(pat, raw, re.IGNORECASE) for pat in cls._AMBIGUOUS_PATTERNS)
+
+    @staticmethod
+    def _clarification_message() -> str:
+        return (
+            "为避免误执行，我先确认下你的意图：\n"
+            "1. 你要我做的目标是什么（例如：创建飞书文档/修复某报错/更新某文件）？\n"
+            "2. 成功标准是什么（你希望看到什么结果）？\n"
+            "3. 现在是否立即执行，还是先给方案再执行？"
+        )
+
+    def _merge_pending_messages(self, pending: list[InboundMessage]) -> InboundMessage:
+        if len(pending) == 1:
+            return pending[0]
+        first = pending[0]
+        merged_parts = [pending[0].content]
+        for i, m in enumerate(pending[1:], start=1):
+            merged_parts.append(f"[补充{i}] {m.content}")
+        merged_content = "\n\n".join(merged_parts)
+        base = pending[-1]
+        return replace(base, content=merged_content, media=first.media or base.media)
+
+    async def _flush_session_messages(self, session_key: str) -> None:
+        try:
+            await asyncio.sleep(self._MERGE_WINDOW_SEC)
+            pending = self._pending_messages.pop(session_key, [])
+            if not pending:
+                return
+            merged = self._merge_pending_messages(pending)
+            task = asyncio.create_task(self._dispatch(merged))
+            self._active_tasks.setdefault(session_key, []).append(task)
+            task.add_done_callback(
+                lambda t, k=session_key: self._remove_active_task(self._active_tasks, k, t)
+            )
+        finally:
+            self._debounce_tasks.pop(session_key, None)
+
+    async def _queue_inbound_message(self, msg: InboundMessage) -> None:
+        session_key = msg.session_key
+        self._pending_messages.setdefault(session_key, []).append(msg)
+        if old := self._debounce_tasks.get(session_key):
+            old.cancel()
+        task = asyncio.create_task(self._flush_session_messages(session_key))
+        self._debounce_tasks[session_key] = task
 
     def _register_default_tools(self) -> None:
         """Register the default set of tools."""
@@ -154,12 +245,12 @@ class AgentLoop:
             await self._mcp_stack.__aenter__()
             await connect_mcp_servers(self._mcp_servers, self.tools, self._mcp_stack)
             self._mcp_connected = True
-        except Exception as e:
+        except BaseException as e:
             logger.error("Failed to connect MCP servers (will retry next message): {}", e)
             if self._mcp_stack:
                 try:
                     await self._mcp_stack.aclose()
-                except Exception:
+                except BaseException:
                     pass
                 self._mcp_stack = None
         finally:
@@ -220,6 +311,73 @@ class AgentLoop:
                 continue
         return results
 
+    @classmethod
+    def _has_terminal_marker(cls, content: str) -> bool:
+        return any(marker in content for marker in cls._TERMINAL_MARKERS)
+
+    @classmethod
+    def _strip_terminal_markers(cls, content: str | None) -> str | None:
+        if not content:
+            return content
+        cleaned = content
+        for marker in cls._TERMINAL_MARKERS:
+            cleaned = cleaned.replace(marker, "")
+        return cleaned.strip() or None
+
+    @classmethod
+    def _tool_result_limit(cls, tool_name: str | None, content: str) -> int:
+        if cls._has_terminal_marker(content):
+            return cls._TERMINAL_TOOL_RESULT_MAX_CHARS
+        if tool_name in cls._EXTERNAL_API_TOOLS:
+            return cls._TERMINAL_TOOL_RESULT_MAX_CHARS
+        return cls._TOOL_RESULT_MAX_CHARS
+
+    def _inject_terminal_feedback(
+        self,
+        messages: list[dict[str, Any]],
+        tool_name: str,
+        result: str,
+        fail_counts: dict[str, int],
+    ) -> list[dict[str, Any]]:
+        if "[DONE]" in result:
+            fail_counts[tool_name] = 0
+            messages.append({
+                "role": "system",
+                "content": (
+                    f"Tool '{tool_name}' returned [DONE]. "
+                    "Stop calling tools and directly report this result to the user."
+                ),
+            })
+            return messages
+
+        if "[FAILED]" in result:
+            if tool_name in self._EXTERNAL_API_TOOLS:
+                fail_counts[tool_name] = fail_counts.get(tool_name, 0) + 1
+            else:
+                fail_counts[tool_name] = fail_counts.get(tool_name, 0)
+
+            if fail_counts.get(tool_name, 0) >= 3:
+                messages.append({
+                    "role": "system",
+                    "content": (
+                        f"Tool '{tool_name}' has failed repeatedly. "
+                        "Report the error details to the user and wait for instruction. "
+                        "Do not retry this tool again in this turn."
+                    ),
+                })
+            else:
+                messages.append({
+                    "role": "system",
+                    "content": (
+                        f"Tool '{tool_name}' returned [FAILED]. "
+                        "Report the error to the user and do not continue blind retries."
+                    ),
+                })
+            return messages
+
+        fail_counts[tool_name] = 0
+        return messages
+
     async def _run_agent_loop(
         self,
         initial_messages: list[dict],
@@ -230,6 +388,7 @@ class AgentLoop:
         iteration = 0
         final_content = None
         tools_used: list[str] = []
+        consecutive_failed_tools: dict[str, int] = {}
 
         while iteration < self.max_iterations:
             iteration += 1
@@ -250,6 +409,7 @@ class AgentLoop:
                 break
 
             if response.has_tool_calls:
+                terminal_response: str | None = None
                 if on_progress:
                     clean = self._strip_think(response.content)
                     if clean:
@@ -280,6 +440,17 @@ class AgentLoop:
                     messages = self.context.add_tool_result(
                         messages, tool_call.id, tool_call.name, result
                     )
+                    if isinstance(result, str):
+                        messages = self._inject_terminal_feedback(
+                            messages, tool_call.name, result, consecutive_failed_tools,
+                        )
+                        if self._has_terminal_marker(result):
+                            terminal_response = self._strip_terminal_markers(result)
+                            break
+
+                if terminal_response is not None:
+                    final_content = terminal_response
+                    break
             else:
                 clean = self._strip_think(response.content)
 
@@ -289,6 +460,7 @@ class AgentLoop:
                     clean or "", set(self.tools._tools.keys()),
                 )
                 if text_calls:
+                    terminal_response: str | None = None
                     logger.warning(
                         "Model output {} tool call(s) as text – intercepting",
                         len(text_calls),
@@ -317,12 +489,23 @@ class AgentLoop:
                         messages = self.context.add_tool_result(
                             messages, tc_dict["id"], fn_name, result,
                         )
+                        if isinstance(result, str):
+                            messages = self._inject_terminal_feedback(
+                                messages, fn_name, result, consecutive_failed_tools,
+                            )
+                            if self._has_terminal_marker(result):
+                                terminal_response = self._strip_terminal_markers(result)
+                                break
+
+                    if terminal_response is not None:
+                        final_content = terminal_response
+                        break
                     continue
 
                 messages = self.context.add_assistant_message(
                     messages, clean, reasoning_content=response.reasoning_content,
                 )
-                final_content = clean
+                final_content = self._strip_terminal_markers(clean)
                 break
 
         if final_content is None and iteration >= self.max_iterations:
@@ -349,22 +532,26 @@ class AgentLoop:
             if msg.content.strip().lower() == "/stop":
                 await self._handle_stop(msg)
             else:
-                task = asyncio.create_task(self._dispatch(msg))
-                self._active_tasks.setdefault(msg.session_key, []).append(task)
-                task.add_done_callback(lambda t, k=msg.session_key: self._active_tasks.get(k, []) and self._active_tasks[k].remove(t) if t in self._active_tasks.get(k, []) else None)
+                active = [t for t in self._active_tasks.get(msg.session_key, []) if not t.done()]
+                if active:
+                    cancelled = await self._cancel_session_tasks(msg.session_key)
+                    await self.bus.publish_outbound(OutboundMessage(
+                        channel=msg.channel,
+                        chat_id=msg.chat_id,
+                        content=f"收到补充需求，已打断当前执行（{cancelled} 个任务），合并你的新输入后继续。",
+                        metadata=msg.metadata or {},
+                    ))
+                await self._queue_inbound_message(msg)
 
     async def _handle_stop(self, msg: InboundMessage) -> None:
         """Cancel all active tasks and subagents for the session."""
-        tasks = self._active_tasks.pop(msg.session_key, [])
-        cancelled = sum(1 for t in tasks if not t.done() and t.cancel())
-        for t in tasks:
-            try:
-                await t
-            except (asyncio.CancelledError, Exception):
-                pass
-        sub_cancelled = await self.subagents.cancel_by_session(msg.session_key)
-        total = cancelled + sub_cancelled
+        if debounce := self._debounce_tasks.pop(msg.session_key, None):
+            debounce.cancel()
+        dropped = len(self._pending_messages.pop(msg.session_key, []))
+        total = await self._cancel_session_tasks(msg.session_key)
         content = f"⏹ Stopped {total} task(s)." if total else "No active task to stop."
+        if dropped:
+            content += f" 丢弃待执行补充消息 {dropped} 条。"
         await self.bus.publish_outbound(OutboundMessage(
             channel=msg.channel, chat_id=msg.chat_id, content=content,
         ))
@@ -473,6 +660,14 @@ class AgentLoop:
             return OutboundMessage(channel=msg.channel, chat_id=msg.chat_id,
                                   content="🐈 nanobot commands:\n/new — Start a new conversation\n/stop — Stop the current task\n/help — Show available commands")
 
+        if self._needs_clarification(msg.content):
+            return OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content=self._clarification_message(),
+                metadata=msg.metadata or {},
+            )
+
         unconsolidated = len(session.messages) - session.last_consolidated
         if (unconsolidated >= self.memory_window and session.key not in self._consolidating):
             self._consolidating.add(session.key)
@@ -540,8 +735,10 @@ class AgentLoop:
         for m in messages[skip:]:
             entry = {k: v for k, v in m.items() if k != "reasoning_content"}
             role, content = entry.get("role"), entry.get("content")
-            if role == "tool" and isinstance(content, str) and len(content) > self._TOOL_RESULT_MAX_CHARS:
-                entry["content"] = content[:self._TOOL_RESULT_MAX_CHARS] + "\n... (truncated)"
+            if role == "tool" and isinstance(content, str):
+                limit = self._tool_result_limit(entry.get("name"), content)
+                if len(content) > limit:
+                    entry["content"] = content[:limit] + "\n... (truncated)"
             elif role == "user":
                 if isinstance(content, str) and content.startswith(ContextBuilder._RUNTIME_CONTEXT_TAG):
                     continue

@@ -30,10 +30,85 @@ AuthMiddleware — OAuth2 授权中间件
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any, Callable, Optional
 
 from skills.oauth2_vault.vault import get_oauth2_vault, OAuth2VaultDB
+
+
+# ── Token 脱敏：防止 token 泄漏到 episode 正文 ───────────────
+_TOKEN_PATTERNS = re.compile(
+    r'(t-[A-Za-z0-9_-]{20,})'       # 飞书 app_access_token
+    r'|(Bearer\s+[A-Za-z0-9_.-]{20,})'  # Bearer token
+    r'|(secret_[A-Za-z0-9_-]{20,})'     # Notion integration secret
+    r'|([A-Za-z0-9_-]{40,})',          # 长随机串（通用 token 特征）
+    re.ASCII,
+)
+
+
+def _scrub_tokens(text: str) -> str:
+    """移除可能的 token 值，替换为 [REDACTED]。"""
+    return _TOKEN_PATTERNS.sub('[REDACTED]', text)
+
+
+def _is_retryable_error(exc: Exception) -> bool:
+    """判断是否属于可自动重试一次的暂态错误。"""
+    msg = str(exc).lower()
+    # 网络波动/超时/连接中断
+    transient_keywords = (
+        "timeout",
+        "timed out",
+        "connection reset",
+        "temporarily unavailable",
+        "connection aborted",
+        "name or service not known",
+    )
+    if any(k in msg for k in transient_keywords):
+        return True
+
+    # API 层限流/服务端错误（429 / 5xx）
+    if "http 429" in msg or "too many requests" in msg:
+        return True
+    if re.search(r"http\s+5\d\d", msg):
+        return True
+
+    return False
+
+
+def _classify_platform_failure(platform: str, task_name: str, error_text: str) -> tuple[str, str]:
+    """Return (failure_signature, recovery_hint) for reuse by pre_task and operator outputs."""
+    err = (error_text or "").lower()
+    task = (task_name or "").lower()
+
+    if platform == "feishu":
+        if "http 404" in err and ("docx" in err or "document" in task):
+            return (
+                "feishu.doc_api_404",
+                "检查文档接口路径与应用权限（docx/document），确认租户已发布并具备云文档权限。",
+            )
+        if "need_reauth" in err or "未配置" in err or "token" in err and "失效" in err:
+            return (
+                "feishu.auth_missing_or_expired",
+                "先执行 oauth2_vault setup 并验证 get_token，再重试飞书动作。",
+            )
+        if "open_id" in err or "receive_id" in err:
+            return (
+                "feishu.invalid_receive_id",
+                "校验 user_open_id/chat_id 的真实格式，优先使用 open_id=ou_xxx。",
+            )
+        if any(k in err for k in ("timeout", "timed out", "connection", "temporarily unavailable", "http 429", "http 5")):
+            return (
+                "feishu.transient_network_or_rate_limit",
+                "属于暂态异常，已自动重试一次；如持续失败建议稍后重试并保留错误码。",
+            )
+
+    return (f"{platform}.generic_failure", "记录错误码与上下文，先做最小动作验证（status/get_token/send_message）。")
+
+
+def _task_type_for_pattern(platform: str, task_name: str) -> str:
+    action = (task_name or "").split(":", 1)[0] or "action"
+    return f"{platform}:{action}"
 
 
 # ── WarmMemory 懒加载（brain 不可用时不崩溃） ─────────────────
@@ -70,19 +145,27 @@ class AuthMiddleware:
     def get_valid_token(self, platform: str) -> Optional[str]:
         """
         获取有效 access_token：
-        - 未过期 → 直接返回
-        - 已过期 → 自动刷新 → 返回新 token
+        - 有 token 且未过期 → 直接返回
+        - 无 token 或已过期 → 自动刷新 → 返回新 token
         - 刷新失败 → 返回 None
         """
-        if self._vault.is_expired(platform):
-            ok = self._auto_refresh(platform)
-            if not ok:
-                return None
         creds = self._vault.get(platform)
         if not creds:
             return None
-        # 优先返回 access_token，其次 app_access_token（飞书服务端）
-        return creds.get("access_token") or creds.get("app_access_token")
+
+        token = creds.get("access_token") or creds.get("app_access_token")
+        need_refresh = not token or self._vault.is_expired(platform)
+
+        if need_refresh:
+            ok = self._auto_refresh(platform)
+            if not ok:
+                return None
+            creds = self._vault.get(platform)
+            if not creds:
+                return None
+            token = creds.get("access_token") or creds.get("app_access_token")
+
+        return token
 
     def _auto_refresh(self, platform: str) -> bool:
         """尝试刷新 token，成功返回 True，失败返回 False。"""
@@ -149,7 +232,10 @@ class AuthMiddleware:
               "success": bool,
               "output":  ...,         # 成功时的返回值
               "error":   str,         # 失败时的错误描述
+              "operator_hint": str,   # 失败时给用户/操作者的下一步建议
               "need_reauth": bool,    # 是否需要重新授权
+                            "retried": bool,        # 是否自动重试过一次
+                            "terminal": bool,       # 是否应当停止继续尝试
             }
         """
         start = time.time()
@@ -160,18 +246,58 @@ class AuthMiddleware:
             result: dict = {
                 "success": False,
                 "error": f"{platform} 未配置授权或 token 已失效，请先调用 oauth2_vault(action='setup') 配置凭证",
+                "operator_hint": "先 setup，再 get_token 验证；通过后再执行外部动作。",
                 "need_reauth": True,
+                "retried": False,
+                "terminal": True,
             }
         else:
+            retried = False
             try:
                 output = fn(token)
-                result = {"success": True, "output": output, "need_reauth": False}
-            except Exception as e:
                 result = {
-                    "success": False,
-                    "error": str(e),
+                    "success": True,
+                    "output": output,
+                    "operator_hint": "",
                     "need_reauth": False,
+                    "retried": False,
+                    "terminal": True,
                 }
+            except Exception as e:
+                if _is_retryable_error(e):
+                    retried = True
+                    try:
+                        output = fn(token)
+                        result = {
+                            "success": True,
+                            "output": output,
+                            "operator_hint": "",
+                            "need_reauth": False,
+                            "retried": True,
+                            "terminal": True,
+                        }
+                    except Exception as e2:
+                        signature, hint = _classify_platform_failure(platform, task_name, str(e2))
+                        result = {
+                            "success": False,
+                            "error": f"{e2}（已自动重试 1 次）",
+                            "error_signature": signature,
+                            "operator_hint": hint,
+                            "need_reauth": False,
+                            "retried": True,
+                            "terminal": True,
+                        }
+                else:
+                    signature, hint = _classify_platform_failure(platform, task_name, str(e))
+                    result = {
+                        "success": False,
+                        "error": str(e),
+                        "error_signature": signature,
+                        "operator_hint": hint,
+                        "need_reauth": False,
+                        "retried": retried,
+                        "terminal": True,
+                    }
 
         duration = time.time() - start
 
@@ -179,6 +305,7 @@ class AuthMiddleware:
         warm = _get_warm()
         if warm:
             outcome = str(result.get("output") or result.get("error") or "")[:200]
+            outcome = _scrub_tokens(outcome)
             warm.record_episode(
                 task=f"{platform}:{task_name}",
                 steps=["get_token", "execute"],
@@ -187,6 +314,19 @@ class AuthMiddleware:
                 success=result["success"],
                 tags=["oauth2", platform, "external_action"] + extra_tags,
             )
+
+            # Structured learning loop: convert tool outcomes into reusable failure/pattern memory.
+            task_type = _task_type_for_pattern(platform, task_name)
+            warm.upsert_pattern(task_type, "oauth2_auth_middleware", bool(result.get("success")), sample_weight=0.25)
+            if not result.get("success"):
+                signature = str(result.get("error_signature") or "")
+                hint = str(result.get("operator_hint") or "")
+                error_text = _scrub_tokens(str(result.get("error") or ""))[:240]
+                warm.record_failure(
+                    task=f"{platform}:{task_name}",
+                    error=signature or error_text,
+                    recovery=hint,
+                )
 
         return result
 

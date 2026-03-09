@@ -50,6 +50,9 @@ class TaskBridge:
             "interrupt_reason": None,
             "max_iterations": 0,
             "max_runtime_seconds": 0,
+            "clarification_pending": False,
+            "clarification_question": None,
+            "fix_history": [],
             "created_at": _utc_now(),
             "updated_at": _utc_now(),
             "history": [],
@@ -82,6 +85,9 @@ class TaskBridge:
         metadata: dict[str, Any] | None = None,
         append_history: str | None = None,
         clear_interrupt: bool = False,
+        clarification_pending: bool | None = None,
+        clarification_question: str | None = None,
+        append_fix: dict[str, Any] | None = None,
         reset: bool = False,
     ) -> dict[str, Any]:
         state = self.default_state() if reset else self.read_state()
@@ -110,6 +116,16 @@ class TaskBridge:
         if clear_interrupt:
             state["interrupt_requested"] = False
             state["interrupt_reason"] = None
+
+        if clarification_pending is not None:
+            state["clarification_pending"] = clarification_pending
+        if clarification_question is not None:
+            state["clarification_question"] = clarification_question
+
+        if append_fix:
+            fix_history = list(state.get("fix_history") or [])
+            fix_history.append(append_fix)
+            state["fix_history"] = fix_history[-20:]
 
         if append_history:
             history = list(state.get("history") or [])

@@ -35,10 +35,22 @@ import urllib.request
 # 全局配置
 # ══════════════════════════════════════════════
 
-BASE_DIR = Path(os.environ.get(
-    "KYLOPRO_DIR",
-    Path.home() / "Kylopro-Nexus"
-))
+def _resolve_base_dir() -> Path:
+    env_dir = os.environ.get("KYLOPRO_DIR", "").strip()
+    if env_dir:
+        return Path(env_dir).expanduser().resolve()
+
+    # skills/kylobrain/cloud_brain.py -> Kylopro-Nexus/
+    repo_guess = Path(__file__).resolve().parents[2]
+    cwd = Path.cwd().resolve()
+    home_guess = Path.home() / "Kylopro-Nexus"
+    for candidate in (repo_guess, cwd, home_guess):
+        if (candidate / "brain").exists() and (candidate / "skills").exists():
+            return candidate
+    return repo_guess
+
+
+BASE_DIR = _resolve_base_dir()
 BRAIN_DIR       = BASE_DIR / "brain"
 MEMORY_FILE     = BASE_DIR / "MEMORY.md"
 SOUL_FILE       = BASE_DIR / "SOUL.md"

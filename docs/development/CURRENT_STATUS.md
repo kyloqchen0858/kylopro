@@ -1,38 +1,64 @@
 # 当前状态
 
+> 更新：2026-03-10 Phase 11.6b
+
 ## 已验证能力
 
-- `nanobot gateway` 已作为唯一生产入口稳定使用
-- Telegram 通道已验证
-- QQ 通道已验证
-- Kylo 自知层、向量 WARM 检索、BrainHooks 已接入运行时
-- `Kylopro-Nexus` 当前生产 Python 环境已确认装有 `chromadb`，向量检索链路可实际工作，不再只是 Jaccard 回退
+- `nanobot gateway` 仍是唯一生产入口，`start_gateway.bat` 是唯一生产启动脚本
+- Telegram 通道已验证，QQ 通道已验证
+- BrainHooks 已接入运行时，WARM 读取端与 episode 写入端都已打通
+- OAuth2VaultDB 已完成 Windows 保护、WAL 模式和 stdlib fallback 修补
+- 飞书 OAuth2 链路代码已跑通：凭证保险箱、AuthMiddleware、文档创建、消息发送
+- Freelance 工作流已支持项目跟踪、工时、发票、简历快照、技能画像
+- 自知层已补充能力域、工具降级路径、失败经验沉淀
 
-## 当前通道状态
+## 本轮阶段结论
 
-- Telegram
-  - 已连接并实际收发成功
-  - 主要风险点是 polling 单实例冲突
+- **Phase 11.4**：工具降级体系、自知层增强、技能整合完成
+- **Phase 11.5**：L0/L1/L2 记忆认同系统与桌面操作能力已落地
+- **Phase 11.6**：搜索入口合并、L0 路径修复、SOUL 风格自然化完成
+- **Phase 11.6b**：追问模板误判修复、MCP 安全经验写入脑循环、操作文档补齐
 
-- QQ
-  - 已通过 `channels.qq` 配置启用
-  - 已完成私聊验证
-  - 主要风险点是 QQ 开放平台沙箱成员与私聊权限
+## 核心诊断
 
-- WhatsApp
-  - bridge、gateway、配置链路都已打通
-  - 当前问题不是代码主路径，而是账号风控 / 旧认证会话 / 重连稳定性
-  - 先不视为稳定生产通道，后续单独排查
+| 维度 | 状态 | 当前瓶颈 |
+|------|------|---------|
+| 骨架 | 90% | 需要继续压缩重复入口与历史副本 |
+| 大脑 | 95% | 还缺 L1/L2 定时提炼的正式生产调度 |
+| 灵魂 | ✅ v5.1 | 需要继续验证真实对话自然度 |
+| 交互 | 55% | 消息合并、打断、silent progress 仍未代码化 |
+| 安全 | 65% | 规则层完整，代码级 `policy_check()` 仍缺 |
+| 外部能力 | 60% | 飞书链路完成，Notion/GitHub 外部动作还未接通 |
+
+## 当前阻塞
+
+1. 飞书真实新凭证仍待用户提供 `app_id/app_secret` 做新一轮端到端验证
+2. MessageCoalescer、Preemption、silent tool progress 仍在设计稿阶段
+3. L1/L2 记忆提炼已有代码，但尚未配置 cron 进入稳定生产循环
+
+## Git 与文件整理状态
+
+- 当前工作区分为两个 Git 边界：顶层 `nanobot/` 与嵌套仓库 `Kylopro-Nexus/`
+- `Kylopro-Nexus/.env`、`brain/`、`data/`、`logs/`、`tasks/`、`output/` 继续留在本地，不进 Git
+- `core/`、`kylo_tools/`、`skills/`、`docs/`、`tests/`、`SOUL.md`、`AGENTS.md` 是本轮应同步到 GitHub 的主要资产
+
+## 下一步
+
+1. 配置并验证飞书新凭证，确认外部平台真实动作闭环
+2. 把 MessageCoalescer、Preemption、ToolResult silent 落到代码
+3. 为 L1/L2 记忆提炼补上 cron 调度并验证首次产出
+4. 继续推进 Tool Policy、输入净化、Notion OAuth2、Session 压缩
+
+## 通道状态
+
+| 通道 | 状态 | 风险 |
+|------|------|------|
+| Telegram | ✅ 主通道 | polling 单实例冲突，需先释放旧会话 |
+| QQ | ✅ 辅通道 | 仍依赖外部平台配置正确性 |
+| WhatsApp | ⚠️ 降级待排查 | bridge 不稳定，暂不作为稳定生产通道 |
 
 ## 敏感信息策略
 
-- `~/.nanobot/config.json` 是真实运行配置源，但不进入仓库
-- 任何配置备份一律放到 `~/.nanobot/backups/`
-- 工作区仓库里不保留 token、secret、AppSecret 副本
-
-## 下次开发前先确认
-
-1. 当前需要改的是功能，还是运行配置
-2. 当前需要看的是真实进度，还是历史开发记录
-3. 如果是通道相关，先看 `CHANNEL_SETUP_TELEGRAM_QQ.md` 和 `../gateway_channels_playbook.md`
-4. 如果是记忆相关，先看向量状态是否为 `vector_enabled=true`，再区分是真向量命中还是回退检索
+- `~/.nanobot/config.json` 是真实运行配置源，不进入仓库
+- `Kylopro-Nexus/.env`、`brain/vault/`、`data/` 仅本地保存
+- token、secret、API key 只能进入保险箱或本地环境变量，不进入普通文档、日志和 episode 正文

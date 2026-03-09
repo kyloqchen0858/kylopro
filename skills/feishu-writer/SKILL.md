@@ -11,8 +11,12 @@ metadata: {"nanobot":{"always":false}}
 Kylo 的主动生产技能。完整工作流：
 1. 使用 `web_search` + `web_fetch` 抓取最新 AI 技术热点资讯
 2. 按微信公众号文章标准写作（结构清晰、有观点、有温度）
-3. 调用 `oauth2_vault(action="feishu_create_doc")` 写入飞书文档
+3. 调用 `feishu(action="create_doc")` 写入飞书文档
 4. 发送飞书消息通知用户审阅
+
+执行前先做失败记忆预检：
+- `kylobrain(action="recall", query="feishu create_doc", collection="failures")`
+- 若命中历史失败，先执行最小验证：`feishu(action="status")` -> `oauth2_vault(action="get_token")`
 
 **触发方式**：用户说「帮我写 AI 周报」「生成公众号文章」「抓取 AI 热点写飞书」等
 
@@ -82,7 +86,8 @@ web_fetch(url="...", extract_text=true)
 
 ```json
 {
-  "action": "feishu_create_doc",
+  "tool": "feishu",
+  "action": "create_doc",
   "title": "AI技术周报 [日期]",
   "content": "[生成的 Markdown 文章]",
   "notify": true
@@ -100,6 +105,7 @@ web_fetch(url="...", extract_text=true)
 
 - 调用 `kylobrain(action="post_task")` 记录本次任务结果
 - 写一条记忆：本次搜索的质量/哪些关键词效果好
+- 若失败：调用 `kylobrain(action="record_failure", error_type="feishu_writer", task="...", fix="...")`
 
 ## 处理异常
 

@@ -5,6 +5,10 @@
 > **文件用途**: 存档到 `docs/development/phase11_oauth2_brain_integration.md`  
 > **依赖文件**: DEVLOG.md Phase 10.2, `brain/vault/.kylo_secrets.env`, `skills/kylobrain/`
 
+> **2026-03-09 热修更新（交互闭环）**:
+> 已并入 "外部 API 工具终止信号" 方案，解决 "飞书已成功但代理继续盲目诊断" 问题。
+> 核心机制：`[DONE]` 成功终止、`[FAILED]` 失败终止、`AuthMiddleware` 暂态错误自动重试 1 次。
+
 ---
 
 ## 一、现状诊断（为什么卡住了）
@@ -489,6 +493,32 @@ def _build_startup_diff() -> str:
 
 ## 六、实施顺序（最小代价）
 
+### 第零步（立即修复，已执行）：交互闭环止损
+```
+修改 skills/oauth2_vault/auth_middleware.py
+    - execute_with_auth() 增加暂态错误自动重试 1 次
+    - 返回字段增加 retried / terminal
+
+修改 core/kylopro_tools.py
+    - feishu / oauth2_vault / freelance 统一追加终止信号
+    - 成功追加 [DONE]，失败追加 [FAILED]
+
+修改 nanobot/agent/tools/registry.py
+    - 检测到 [DONE]/[FAILED] 时不再追加 "try different approach" 提示
+
+修改 nanobot/agent/loop.py
+    - 外部 API 工具结果截断上限提升到 1500 字符
+    - 同工具连续失败计数，达到阈值后强制注入 "停止重试并反馈用户" 系统指令
+    - 最终用户回复前剥离控制标记，避免 `[DONE]/[FAILED]` 外泄
+
+修改 nanobot/agent/context.py
+    - system guidelines 增加 [DONE]/[FAILED] 行为规则
+```
+
+验收标准：
+- 飞书消息发送成功后，代理直接向用户汇报，不再继续调用诊断工具
+- 外部 API 失败后最多自动重试 1 次，然后明确报错并等待用户指令
+
 ### 第一步（1-2天）：OAuth2 凭证体系基础
 ```
 新建 skills/oauth2_vault/vault.py          ← 凭证保险箱
@@ -558,12 +588,15 @@ Jaccard 在 100 条 episodes 时表现和向量检索差不多（数据量太小
 | `skills/oauth2_vault/platforms/feishu.py` | 新建 | 飞书适配器 |
 | `skills/oauth2_vault/platforms/notion.py` | 新建 | Notion 适配器 |
 | `skills/oauth2_vault/SKILL.md` | 新建 | nanobot 技能定义 |
-| `core/kylopro_tools.py` | 修改（+3行）| ScreenTool 执行结果回流 |
+| `nanobot/agent/tools/registry.py` | 修改 | 终止信号 `[DONE]/[FAILED]` 识别，禁止盲目重试提示 |
+| `nanobot/agent/loop.py` | 修改 | 外部 API 失败护栏、结果截断上限提升 |
+| `nanobot/agent/context.py` | 修改 | 在 system prompt 中固化终止信号行为规则 |
+| `core/kylopro_tools.py` | 修改 | ScreenTool 回流 + 外部 API 工具终止信号 `[DONE]/[FAILED]` |
 | `skills/skill_evolution/experiment.py` | 修改（+20行）| 读取大脑失败率指导实验方向 |
 | `core/brain_hooks.py` | 修改（+30行）| 启动差分注入 |
 | `DEVELOPMENT_ROADMAP.md` | 修改 | 增加 Phase 11 进行中状态 |
 
-**不修改 nanobot 核心文件，不修改 cloud_brain.py，只做连线。**
+**备注**：为修复交互闭环问题，Phase 11 已包含少量 nanobot 核心文件改动（registry/loop/context）。其余依旧坚持最小改动、以连线为主。
 
 ---
 

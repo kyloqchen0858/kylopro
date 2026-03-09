@@ -18,6 +18,18 @@ from kylo_tools.task_bridge import TaskBridge
 from core.cost_tracker import get_tracker, CostTracker
 
 
+_SIG_DONE = "\n\n[DONE] 直接将以上结果告知用户。"
+_SIG_FAIL = "\n\n[FAILED] 将错误信息告知用户，不要重试。"
+
+
+def _signal_done(text: str) -> str:
+    return text if text.endswith(_SIG_DONE) else text + _SIG_DONE
+
+
+def _signal_fail(text: str) -> str:
+    return text if text.endswith(_SIG_FAIL) else text + _SIG_FAIL
+
+
 class TaskInboxTool(Tool):
     """任务收件箱：查看/添加/完成 tasks/ 目录下的 Markdown 任务"""
 
@@ -303,7 +315,7 @@ class TaskInterruptTool(Tool):
 
 
 # ═══════════════════════════════════════════════════════════════════
-# 搜索工具：Tavily（主力）→ DuckDuckGo（免费 fallback）
+# 统一搜索工具：web_search（Tavily 优先 → DDG 自动降级）
 # ═══════════════════════════════════════════════════════════════════
 
 def _load_tavily_key(workspace: Path) -> str:
@@ -317,11 +329,24 @@ def _load_tavily_key(workspace: Path) -> str:
     return ""
 
 
-class TavilySearchTool(Tool):
-    """Tavily 智能搜索——专为 AI Agent 优化，直接返回提炼后的网页内容。
-    
-    主力搜索工具，每月 1000 次免费额度。额度耗尽时请改用 ddg_search。
-    调用前会自动检查剩余配额，耗尽时直接返回提示。
+# DDG 防封参数
+_DDG_MIN_INTERVAL = 3.0
+_DDG_MAX_INTERVAL = 7.0
+_DDG_DAILY_LIMIT = 80
+_ddg_last_call_ts = 0.0
+_ddg_daily_count = 0
+_ddg_daily_date = ""
+
+
+class WebSearchTool(Tool):
+    """统一搜索工具 — 自动 Tavily→DDG 降级，单一入口。
+
+    内部逻辑：
+      1. 先尝试 Tavily（高质量，月 1000 次免费）
+      2. Tavily 失败/额度耗尽 → 自动切换 DDG（带防封间隔）
+      3. 两者都失败 → 明确告知结果
+
+    搜索结果开头标注实际使用的引擎和剩余配额。
     """
 
     def __init__(self, tracker: CostTracker, workspace: Path):
@@ -330,13 +355,14 @@ class TavilySearchTool(Tool):
 
     @property
     def name(self) -> str:
-        return "tavily_search"
+        return "web_search"
 
     @property
     def description(self) -> str:
         return (
-            "用 Tavily 搜索网页，返回提炼后的高质量内容摘要（专为 AI Agent 优化）。"
-            "每月 1000 次免费，调用 cost_check 可查剩余次数。额度耗尽时改用 ddg_search。"
+            "搜索互联网获取最新信息。自动选择最佳搜索引擎（Tavily 优先，额度用完或失败后自动切 DuckDuckGo）。"
+            "搜索结果标注来源引擎和剩余配额。"
+            "用于：查询新闻、事实核查、技术文档、产品信息等需要实时信息的场景。"
         )
 
     @property
@@ -354,15 +380,6 @@ class TavilySearchTool(Tool):
                     "minimum": 1,
                     "maximum": 10,
                 },
-                "search_depth": {
-                    "type": "string",
-                    "enum": ["basic", "advanced"],
-                    "description": "basic=1 credit（默认），advanced=2 credits（更深度）"
-                },
-                "include_answer": {
-                    "type": "boolean",
-                    "description": "是否包含 Tavily 的综合回答（默认 true）"
-                },
             },
             "required": ["query"],
         }
@@ -370,136 +387,119 @@ class TavilySearchTool(Tool):
     async def execute(self, **kwargs: Any) -> str:
         query = kwargs["query"]
         max_results = min(int(kwargs.get("max_results", 5)), 10)
-        search_depth = kwargs.get("search_depth", "basic")
-        include_answer = kwargs.get("include_answer", True)
-        credits_needed = 2 if search_depth == "advanced" else 1
 
-        # 配额检查
+        # Step 1: 尝试 Tavily
+        tavily_ok, tavily_result, tavily_label = await self._try_tavily(query, max_results)
+        if tavily_ok:
+            return tavily_result
+
+        # Step 2: Tavily 失败，自动切换 DDG
+        ddg_ok, ddg_result, ddg_label = await self._try_ddg(query, max_results)
+
+        notice = ""
+        if "quota" in tavily_label:
+            notice = "\n⚠️ Tavily 本月额度已用完，已自动切换 DuckDuckGo"
+        elif "no_key" in tavily_label:
+            notice = "\n⚠️ 未配置 Tavily Key，使用 DuckDuckGo"
+        else:
+            notice = f"\n⚠️ Tavily 失败（{tavily_label}），已切换 DuckDuckGo"
+
+        if ddg_ok:
+            return ddg_result + notice
+
+        # Step 3: 全部失败
+        return (
+            f"❌ 搜索失败，两个引擎都无法访问\n"
+            f"- Tavily: {tavily_label}\n"
+            f"- DDG: {ddg_label}\n"
+            f"建议：稍后重试，或使用 desktop(action='open_url') 直接打开已知 URL"
+        )
+
+    async def _try_tavily(self, query: str, max_results: int) -> tuple[bool, str, str]:
+        """尝试 Tavily 搜索。返回 (成功, 结果文本, 状态标签)"""
         remaining = self._tracker.tavily_remaining()
-        if remaining < credits_needed:
-            return (
-                f"⚠️ Tavily 本月免费额度已耗尽（剩余 {remaining} credits，需要 {credits_needed}）。\n"
-                f"请改用 ddg_search 工具进行免费搜索。"
-            )
+        if remaining < 1:
+            return False, "", "quota_exhausted"
 
         api_key = _load_tavily_key(self._workspace)
         if not api_key:
-            return "❌ Tavily API key 未配置（data/local_config.json → tavily_api_key）"
+            return False, "", "no_key"
 
         try:
             from tavily import TavilyClient
             client = TavilyClient(api_key=api_key)
-
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
                 None,
-                lambda: client.search(
-                    query=query,
-                    max_results=max_results,
-                    search_depth=search_depth,
-                    include_answer=include_answer,
-                ),
+                lambda: client.search(query=query, max_results=max_results, search_depth="basic", include_answer=True),
             )
+            self._tracker.record_tavily_call(credits=1)
+            new_remaining = remaining - 1
 
-            self._tracker.record_tavily_call(credits=credits_needed)
-
-            lines = [f"🔍 Tavily 搜索：{query}（剩余 {remaining - credits_needed} credits）\n"]
-            if include_answer and result.get("answer"):
+            lines = [f"🔍 搜索来源：**Tavily**（本月剩余 {new_remaining} 次）\n查询：{query}\n"]
+            if result.get("answer"):
                 lines.append(f"**综合回答**: {result['answer']}\n")
-
             for i, r in enumerate(result.get("results", []), 1):
-                lines.append(
-                    f"[{i}] {r.get('title', '无标题')}\n"
-                    f"    URL: {r.get('url', '')}\n"
-                    f"    {r.get('content', '')[:300]}\n"
-                )
-
-            return "\n".join(lines)
+                lines.append(f"**{i}. {r.get('title', '无标题')}**")
+                lines.append(f"   {r.get('content', '')[:300]}")
+                lines.append(f"   🔗 {r.get('url', '')}")
+                lines.append("")
+            return True, "\n".join(lines), "ok"
 
         except Exception as e:
-            return f"Tavily 搜索失败: {e}\n建议改用 ddg_search 工具。"
+            return False, "", f"error:{str(e)[:80]}"
 
+    async def _try_ddg(self, query: str, max_results: int) -> tuple[bool, str, str]:
+        """尝试 DDG 搜索（带防封）。返回 (成功, 结果文本, 状态标签)"""
+        global _ddg_last_call_ts, _ddg_daily_count, _ddg_daily_date
+        import time
+        import random
 
-class DuckDuckGoSearchTool(Tool):
-    """DuckDuckGo 免费搜索——无 API Key、无限额度、永久免费。
-    
-    Tavily 额度耗尽后的 fallback 方案，或在不需要深度内容摘要时使用。
-    高频使用时可能遇到 IP 临时限速（通常 1 分钟后恢复）。
-    """
+        today = datetime.now().strftime("%Y-%m-%d")
+        if _ddg_daily_date != today:
+            _ddg_daily_count = 0
+            _ddg_daily_date = today
 
-    def __init__(self, tracker: CostTracker):
-        self._tracker = tracker
+        if _ddg_daily_count >= _DDG_DAILY_LIMIT:
+            return False, "", f"daily_limit({_DDG_DAILY_LIMIT})"
 
-    @property
-    def name(self) -> str:
-        return "ddg_search"
-
-    @property
-    def description(self) -> str:
-        return (
-            "用 DuckDuckGo 免费搜索网页（无 API key，无使用限额）。"
-            "Tavily 额度耗尽时的 fallback，或日常轻量搜索。"
-            "返回标题、URL 和摘要片段（不含深度内容）。"
-        )
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "搜索关键词"
-                },
-                "max_results": {
-                    "type": "integer",
-                    "description": "返回结果数量（默认 8，最多 20）",
-                    "minimum": 1,
-                    "maximum": 20,
-                },
-                "region": {
-                    "type": "string",
-                    "description": "搜索地区（默认 cn-zh 中文结果，可选 wt-wt 全球）",
-                    "default": "cn-zh",
-                },
-            },
-            "required": ["query"],
-        }
-
-    async def execute(self, **kwargs: Any) -> str:
-        query = kwargs["query"]
-        max_results = min(int(kwargs.get("max_results", 8)), 20)
-        region = kwargs.get("region", "cn-zh")
+        # 防封间隔
+        elapsed = time.time() - _ddg_last_call_ts
+        wait_needed = random.uniform(_DDG_MIN_INTERVAL, _DDG_MAX_INTERVAL)
+        if elapsed < wait_needed:
+            import asyncio as _aio
+            await _aio.sleep(wait_needed - elapsed)
 
         try:
             from duckduckgo_search import DDGS
-
             loop = asyncio.get_event_loop()
 
             def _search():
                 with DDGS() as ddgs:
-                    return list(ddgs.text(query, region=region, max_results=max_results))
+                    return list(ddgs.text(query, max_results=max_results))
 
             results = await loop.run_in_executor(None, _search)
+            _ddg_last_call_ts = time.time()
+            _ddg_daily_count += 1
             self._tracker.record_ddg_call()
 
             if not results:
-                return f"🦆 DuckDuckGo 未找到结果：{query}"
+                return True, f"🔍 搜索来源：**DuckDuckGo**\n查询：{query}\n\n未找到结果", "ok_empty"
 
-            lines = [f"🦆 DuckDuckGo 搜索：{query}（{len(results)} 条结果）\n"]
+            lines = [f"🔍 搜索来源：**DuckDuckGo**（今日 {_ddg_daily_count}/{_DDG_DAILY_LIMIT}）\n查询：{query}\n"]
             for i, r in enumerate(results, 1):
-                lines.append(
-                    f"[{i}] {r.get('title', '无标题')}\n"
-                    f"    URL: {r.get('href', '')}\n"
-                    f"    {r.get('body', '')[:250]}\n"
-                )
-            return "\n".join(lines)
+                lines.append(f"**{i}. {r.get('title', '无标题')}**")
+                lines.append(f"   {r.get('body', '')[:300]}")
+                lines.append(f"   🔗 {r.get('href', '')}")
+                lines.append("")
+            return True, "\n".join(lines), "ok"
 
         except Exception as e:
-            return (
-                f"DuckDuckGo 搜索失败（可能是 IP 限速）: {e}\n"
-                f"建议等待 1 分钟后重试，或使用 web_fetch 直接抓取指定 URL。"
-            )
+            _ddg_last_call_ts = time.time()
+            err = str(e).lower()
+            if "ratelimit" in err or "202" in err:
+                return False, "", "ratelimit"
+            return False, "", f"error:{str(e)[:80]}"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -962,6 +962,8 @@ class KyloBrainTool(Tool):
                         "pre_task", "post_task", "remember", "recall",
                         "consolidate", "weekly", "status", "achieve",
                         "health_check", "recover", "migrate", "world_update",
+                        "record_preference", "recall_preference",
+                        "record_failure", "recall_failure",
                     ],
                     "description": "操作类型",
                 },
@@ -985,6 +987,10 @@ class KyloBrainTool(Tool):
                     "enum": ["low", "medium", "high"],
                     "description": "成就影响级别（achieve）",
                 },
+                "key": {"type": "string", "description": "偏好键（record/recall_preference）"},
+                "value": {"type": "string", "description": "偏好值（record_preference）"},
+                "error_type": {"type": "string", "description": "错误类型（record/recall_failure）"},
+                "fix": {"type": "string", "description": "修复方案描述（record_failure）"},
             },
             "required": ["action"],
         }
@@ -1087,6 +1093,31 @@ class KyloBrainTool(Tool):
         elif action == "world_update":
             return "world_update 需要通过 IDE 桥接执行"
 
+        elif action == "record_preference":
+            conn.record_preference(
+                kwargs.get("key", "generic"),
+                kwargs.get("value", ""),
+                source="kylobrain_tool",
+            )
+            return "✅ 偏好已记录"
+
+        elif action == "recall_preference":
+            rows = conn.recall_preference(kwargs.get("key", "generic"))
+            return json.dumps(rows, ensure_ascii=False, indent=2) if rows else "🔍 未找到偏好记录"
+
+        elif action == "record_failure":
+            conn.record_failure(
+                error_type=kwargs.get("error_type", "unknown"),
+                task=kwargs.get("task", ""),
+                fix=kwargs.get("fix", ""),
+                success=bool(kwargs.get("success", False)),
+            )
+            return "✅ 失败模式已记录"
+
+        elif action == "recall_failure":
+            rows = conn.recall_failure(kwargs.get("error_type", "unknown"))
+            return json.dumps(rows, ensure_ascii=False, indent=2) if rows else "🔍 未找到失败模式"
+
         return f"❌ 未知 action: {action}"
 
 
@@ -1148,14 +1179,14 @@ class OAuth2VaultTool(Tool):
             from skills.oauth2_vault.vault import get_oauth2_vault
             vault = get_oauth2_vault()
         except Exception as e:
-            return f"❌ OAuth2Vault 初始化失败: {e}"
+            return _signal_fail(f"❌ OAuth2Vault 初始化失败: {e}")
 
         if action == "setup":
             platform = kwargs.get("platform", "feishu")
             app_id = kwargs.get("app_id", "")
             app_secret = kwargs.get("app_secret", "")
             if not app_id or not app_secret:
-                return "❌ setup 需要提供 app_id 和 app_secret"
+                return _signal_fail("❌ setup 需要提供 app_id 和 app_secret")
             creds: dict = {
                 "app_id": app_id,
                 "app_secret": app_secret,
@@ -1175,7 +1206,7 @@ class OAuth2VaultTool(Tool):
                     ensure_feishu_registered()
                 except Exception:
                     pass
-            return (
+            return _signal_done(
                 f"✅ {platform} 凭证已加密存储\n"
                 f"app_id: {app_id[:8]}***\n"
                 f"下次调用时将自动获取 app_access_token"
@@ -1184,7 +1215,7 @@ class OAuth2VaultTool(Tool):
         elif action == "status":
             platforms = vault.list_platforms()
             if not platforms:
-                return "📭 暂无已配置的平台\n使用 oauth2_vault(action='setup', platform='feishu', ...) 配置"
+                return _signal_done("📭 暂无已配置的平台\n使用 oauth2_vault(action='setup', platform='feishu', ...) 配置")
             lines = ["🔐 OAuth2 已配置平台:"]
             for p in platforms:
                 exp = "⚠️ 已过期" if p["expired"] else "✅ 有效"
@@ -1192,12 +1223,12 @@ class OAuth2VaultTool(Tool):
                 from datetime import datetime
                 updated = datetime.fromtimestamp(p["updated_at"]).strftime("%m-%d %H:%M")
                 lines.append(f"  · {p['platform']}  {exp}  (更新: {updated})")
-            return "\n".join(lines)
+            return _signal_done("\n".join(lines))
 
         elif action == "get_token":
             platform = kwargs.get("platform", "feishu")
             if not vault.has_platform(platform):
-                return f"❌ {platform} 未配置，请先 setup"
+                return _signal_fail(f"❌ {platform} 未配置，请先 setup")
             # 触发自动刷新
             if platform == "feishu":
                 try:
@@ -1209,19 +1240,19 @@ class OAuth2VaultTool(Tool):
                 from skills.oauth2_vault.auth_middleware import get_middleware
                 token = get_middleware().get_valid_token(platform)
                 if not token:
-                    return f"❌ {platform} token 获取失败（可能需要重新配置 app_secret）"
-                return vault.safe_summary(platform)
+                    return _signal_fail(f"❌ {platform} token 获取失败（可能需要重新配置 app_secret）")
+                return _signal_done(vault.safe_summary(platform))
             except Exception as e:
-                return f"❌ token 获取异常: {e}"
+                return _signal_fail(f"❌ token 获取异常: {e}")
 
         elif action == "delete":
             platform = kwargs.get("platform", "")
             if not platform:
-                return "❌ 需要指定 platform"
+                return _signal_fail("❌ 需要指定 platform")
             ok = vault.delete(platform)
-            return f"{'✅ 已删除' if ok else '⚠️ 未找到'} {platform} 凭证"
+            return _signal_done(f"{'✅ 已删除' if ok else '⚠️ 未找到'} {platform} 凭证")
 
-        return f"❌ 未知 action: {action}"
+        return _signal_fail(f"❌ 未知 action: {action}")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1299,13 +1330,15 @@ class FeishuTool(Tool):
         try:
             mw, creds = self._get_middleware_and_creds()
         except Exception as e:
-            return f"❌ 飞书初始化失败: {e}\n请先执行 oauth2_vault(action='setup', platform='feishu', app_id=..., app_secret=...)"
+            return _signal_fail(
+                f"❌ 飞书初始化失败: {e}\n请先执行 oauth2_vault(action='setup', platform='feishu', app_id=..., app_secret=...)"
+            )
 
         if action == "status":
             from skills.oauth2_vault.vault import get_oauth2_vault
             vault = get_oauth2_vault()
             if not vault.has_platform("feishu"):
-                return "❌ 飞书未配置。请先 oauth2_vault(action='setup', platform='feishu', app_id=..., app_secret=...)"
+                return _signal_fail("❌ 飞书未配置。请先 oauth2_vault(action='setup', platform='feishu', app_id=..., app_secret=...)")
             summary = vault.safe_summary("feishu")
             extra = []
             if creds.get("user_open_id"):
@@ -1314,7 +1347,7 @@ class FeishuTool(Tool):
                 extra.append(f"folder_token: {creds['folder_token'][:8]}***")
             if creds.get("chat_id"):
                 extra.append(f"chat_id: {creds['chat_id'][:8]}***")
-            return summary + ("\n" + "\n".join(extra) if extra else "")
+            return _signal_done(summary + ("\n" + "\n".join(extra) if extra else ""))
 
         elif action == "create_doc":
             title = kwargs.get("title", "未命名文档")
@@ -1327,14 +1360,20 @@ class FeishuTool(Tool):
                 notify_open_id = creds.get("user_open_id", "") if notify else ""
                 notify_chat_id = creds.get("chat_id", "") if (notify and not notify_open_id) else ""
                 folder_token = creds.get("folder_token", "")
-                return create_and_notify(
+                tenant_url = creds.get("tenant_url", "")
+                payload = create_and_notify(
                     token=token,
                     title=title,
                     markdown_content=content,
                     notify_open_id=notify_open_id,
                     notify_chat_id=notify_chat_id,
                     folder_token=folder_token,
+                    tenant_url=tenant_url,
                 )
+                # Bubble up downstream API failures so middleware can classify and learn.
+                if not payload.get("success", False):
+                    raise RuntimeError(str(payload.get("error") or "飞书 create_doc 执行失败"))
+                return payload
 
             result = mw.execute_with_auth(
                 platform="feishu",
@@ -1345,8 +1384,12 @@ class FeishuTool(Tool):
 
             if not result["success"]:
                 if result.get("need_reauth"):
-                    return f"❌ {result['error']}"
-                return f"❌ 创建文档失败: {result.get('error', '未知错误')}"
+                    return _signal_fail(f"❌ {result['error']}")
+                hint = result.get("operator_hint", "")
+                msg = f"❌ 创建文档失败: {result.get('error', '未知错误')}"
+                if hint:
+                    msg += f"\n建议: {hint}"
+                return _signal_fail(msg)
 
             output = result["output"]
             lines = [
@@ -1360,16 +1403,16 @@ class FeishuTool(Tool):
                 lines.append("📬 已发送飞书通知")
             elif notify and not output.get("notified"):
                 lines.append("⚠️ 通知未发送（请检查 user_open_id/chat_id 配置）")
-            return "\n".join(lines)
+            return _signal_done("\n".join(lines))
 
         elif action == "send_message":
             text = kwargs.get("text", "")
             if not text:
-                return "❌ send_message 需要提供 text"
+                return _signal_fail("❌ send_message 需要提供 text")
             receive_id = kwargs.get("receive_id") or creds.get("user_open_id", "")
             receive_id_type = kwargs.get("receive_id_type", "open_id")
             if not receive_id:
-                return "❌ 未指定 receive_id，且飞书未配置 user_open_id"
+                return _signal_fail("❌ 未指定 receive_id，且飞书未配置 user_open_id")
 
             from skills.oauth2_vault.platforms.feishu import FeishuAdapter
 
@@ -1385,11 +1428,16 @@ class FeishuTool(Tool):
                 tags=["send_message"],
             )
             if not result["success"]:
-                return f"❌ 发送失败: {result.get('error', '未知')}"
+                hint = result.get("operator_hint", "")
+                msg = f"❌ 发送失败: {result.get('error', '未知')}"
+                if hint:
+                    msg += f"\n建议: {hint}"
+                return _signal_fail(msg)
             msg_id = result.get("output", {}).get("message_id", "")
-            return f"✅ 飞书消息已发送 (message_id: {msg_id[:12]}...)" if msg_id else "✅ 飞书消息已发送"
+            msg = f"✅ 飞书消息已发送 (message_id: {msg_id[:12]}...)" if msg_id else "✅ 飞书消息已发送"
+            return _signal_done(msg)
 
-        return f"❌ 未知 action: {action}"
+        return _signal_fail(f"❌ 未知 action: {action}")
 
 
 class KyloReadFileTool(Tool):
@@ -1452,6 +1500,548 @@ class KyloReadFileTool(Tool):
             return f"Error reading file: {e}"
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Freelance 自由职业项目管理工具
+# 项目跟踪、工时记录、收入报表、发票生成
+# ═══════════════════════════════════════════════════════════════════
+
+class FreelanceTool(Tool):
+    """自由职业项目管理：项目跟踪、工时记录、收入仪表盘、发票生成。"""
+
+    def __init__(self, workspace: Path):
+        self._workspace = workspace
+        self._tracker = None
+
+    def _get_tracker(self):
+        if self._tracker is None:
+            # skills/freelance-hub/ has a hyphen — import dynamically via path
+            import importlib.util
+            spec_path = self._workspace / "skills" / "freelance-hub" / "freelance_tracker.py"
+            spec = importlib.util.spec_from_file_location("freelance_tracker", spec_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            self._tracker = mod.FreelanceTracker(self._workspace)
+        return self._tracker
+
+    def _record_brain_feedback(self, action: str, success: bool, outcome: str) -> None:
+        """Write explicit freelance episodes so brain loop is independent from chat auto-hook."""
+        try:
+            from skills.kylobrain.kylobrain_connector import get_connector
+
+            conn = get_connector()
+            if not conn or not getattr(conn, "brain", None):
+                return
+            task = f"freelance:{action}"
+            conn.brain.warm.record_episode(
+                task=task,
+                steps=["tool_execute", action],
+                outcome=(outcome or "")[:240],
+                duration_sec=0.0,
+                success=success,
+                tags=["freelance", "workflow", action],
+            )
+            conn.brain.warm.upsert_pattern(
+                task_type=task,
+                method="freelance_tool",
+                new_success=success,
+                sample_weight=0.3,
+            )
+            if not success:
+                conn.brain.warm.record_failure(task=task, error=(outcome or "")[:180], recovery="检查输入参数或项目数据完整性")
+        except Exception:
+            pass
+
+    @property
+    def name(self) -> str:
+        return "freelance"
+
+    @property
+    def description(self) -> str:
+        return (
+            "自由职业项目管理。"
+            "actions: add（添加项目）/ list（查看项目）/ update（更新状态）"
+            "/ log_time（记录工时）/ invoice（生成发票）/ dashboard（收入总览）"
+            "/ resume_refresh（简历更新）/ skills_refresh（技能画像更新）"
+        )
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "add", "list", "update", "log_time", "invoice", "dashboard",
+                        "resume_refresh", "skills_refresh",
+                    ],
+                    "description": "操作类型",
+                },
+                "project_id": {
+                    "type": "string",
+                    "description": "项目 ID 或标题关键词（update/log_time/invoice 时需要）",
+                },
+                "title": {"type": "string", "description": "项目标题（add 时必填）"},
+                "client": {"type": "string", "description": "客户名（add 时必填）"},
+                "platform": {
+                    "type": "string",
+                    "enum": ["upwork", "freelancer", "fiverr", "direct", "other"],
+                    "description": "接单平台（默认 direct）",
+                },
+                "bid_amount": {"type": "number", "description": "报价金额"},
+                "agreed_amount": {"type": "number", "description": "协商后金额"},
+                "currency": {"type": "string", "description": "货币（默认 USD）"},
+                "hourly_rate": {"type": "number", "description": "时薪"},
+                "description": {"type": "string", "description": "项目描述"},
+                "status": {
+                    "type": "string",
+                    "enum": ["bidding", "active", "completed", "cancelled"],
+                    "description": "项目状态",
+                },
+                "hours": {"type": "number", "description": "工时（log_time 时必填）"},
+                "note": {"type": "string", "description": "备注内容"},
+                "paid": {"type": "boolean", "description": "是否已收款"},
+                "profile_name": {"type": "string", "description": "个人名片名（resume_refresh/skills_refresh）"},
+                "target_role": {"type": "string", "description": "目标职位（resume_refresh）"},
+                "resume_platform": {
+                    "type": "string",
+                    "enum": ["general", "upwork", "freelancer", "fiverr", "direct", "other"],
+                    "description": "简历/技能输出的平台定制版本",
+                },
+                "keywords": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "关键词列表，用于简历与技能文本优化",
+                },
+            },
+            "required": ["action"],
+        }
+
+    async def execute(self, **kwargs: Any) -> str:
+        action = kwargs["action"]
+        try:
+            tracker = self._get_tracker()
+        except Exception as e:
+            return _signal_fail(f"❌ FreelanceTracker 初始化失败: {e}")
+
+        if action == "add":
+            title = kwargs.get("title", "")
+            client = kwargs.get("client", "")
+            if not title or not client:
+                return _signal_fail("❌ add 需要提供 title 和 client")
+            project = tracker.add_project(
+                title=title,
+                client=client,
+                platform=kwargs.get("platform", "direct"),
+                bid_amount=kwargs.get("bid_amount", 0),
+                currency=kwargs.get("currency", "USD"),
+                hourly_rate=kwargs.get("hourly_rate", 0),
+                description=kwargs.get("description", ""),
+            )
+            self._record_brain_feedback("add", True, f"project {project['id']} created")
+            return _signal_done(
+                f"✅ 项目已创建\n"
+                f"ID: {project['id']}\n"
+                f"标题: {project['title']}\n"
+                f"客户: {project['client']}\n"
+                f"平台: {project['platform']}\n"
+                f"状态: bidding"
+            )
+
+        elif action == "list":
+            status = kwargs.get("status", "")
+            projects = tracker.list_projects(status)
+            if not projects:
+                self._record_brain_feedback("list", True, "no projects")
+                label = f"（状态: {status}）" if status else ""
+                return _signal_done(f"📭 暂无项目{label}\n使用 freelance(action='add', ...) 添加")
+            lines = ["📋 项目列表:"]
+            for p in projects:
+                amt = p["agreed_amount"] or p["bid_amount"]
+                status_icon = {
+                    "bidding": "🟡", "active": "🟢",
+                    "completed": "✅", "cancelled": "❌",
+                }.get(p["status"], "⚪")
+                paid_tag = " 💰" if p["paid"] else ""
+                lines.append(
+                    f"  {status_icon} [{p['id']}] {p['title']} — {p['client']} "
+                    f"| {p['currency']} {amt:,.0f} | {p['total_hours']}h | {p['status']}{paid_tag}"
+                )
+            self._record_brain_feedback("list", True, f"projects:{len(projects)}")
+            return _signal_done("\n".join(lines))
+
+        elif action == "update":
+            pid = kwargs.get("project_id", "")
+            if not pid:
+                self._record_brain_feedback("update", False, "missing project_id")
+                return _signal_fail("❌ update 需要提供 project_id")
+            update_msg = tracker.update_project(
+                pid,
+                status=kwargs.get("status"),
+                agreed_amount=kwargs.get("agreed_amount"),
+                paid=kwargs.get("paid"),
+                hourly_rate=kwargs.get("hourly_rate"),
+                description=kwargs.get("description"),
+                note=kwargs.get("note"),
+            )
+            self._record_brain_feedback("update", not update_msg.startswith("❌"), update_msg)
+            return _signal_done(update_msg)
+
+        elif action == "log_time":
+            pid = kwargs.get("project_id", "")
+            hours = kwargs.get("hours", 0)
+            if not pid or not hours:
+                self._record_brain_feedback("log_time", False, "missing project_id or hours")
+                return _signal_fail("❌ log_time 需要提供 project_id 和 hours")
+            log_msg = tracker.log_time(
+                pid, hours,
+                description=kwargs.get("description") or kwargs.get("note", ""),
+            )
+            self._record_brain_feedback("log_time", not log_msg.startswith("❌"), log_msg)
+            return _signal_done(log_msg)
+
+        elif action == "invoice":
+            pid = kwargs.get("project_id", "")
+            if not pid:
+                self._record_brain_feedback("invoice", False, "missing project_id")
+                return _signal_fail("❌ invoice 需要提供 project_id")
+            invoice_msg = tracker.generate_invoice(pid)
+            self._record_brain_feedback("invoice", not invoice_msg.startswith("❌"), invoice_msg[:180])
+            return _signal_done(invoice_msg)
+
+        elif action == "dashboard":
+            dashboard = tracker.dashboard()
+            self._record_brain_feedback("dashboard", True, dashboard[:180])
+            return _signal_done(dashboard)
+
+        elif action == "resume_refresh":
+            result = tracker.refresh_resume(
+                profile_name=kwargs.get("profile_name", "Kylo"),
+                target_role=kwargs.get("target_role", "Freelance Developer"),
+                platform=kwargs.get("resume_platform", "general"),
+                keywords=kwargs.get("keywords") or [],
+            )
+            if not result.get("success"):
+                self._record_brain_feedback("resume_refresh", False, result.get("error", "unknown"))
+                return _signal_fail(f"❌ 简历更新失败: {result.get('error', '未知错误')}")
+            self._record_brain_feedback("resume_refresh", True, f"{result.get('path')} cov={result.get('keyword_coverage',{}).get('coverage',1.0)}")
+            kc = result.get("keyword_coverage", {})
+            return _signal_done(
+                "✅ 简历更新完成\n"
+                f"文件: {result.get('path')}\n"
+                f"最新: {result.get('latest')}\n\n"
+                f"关键词命中: {kc.get('coverage', 1.0):.0%}"
+                + (f"\n缺失关键词: {', '.join(kc.get('missing', []))}" if kc.get("missing") else "")
+                + "\n\n"
+                + f"{result.get('summary', '')[:780]}"
+            )
+
+        elif action == "skills_refresh":
+            result = tracker.refresh_skills_profile(
+                profile_name=kwargs.get("profile_name", "Kylo"),
+                platform=kwargs.get("resume_platform", "general"),
+                keywords=kwargs.get("keywords") or [],
+            )
+            if not result.get("success"):
+                self._record_brain_feedback("skills_refresh", False, result.get("error", "unknown"))
+                return _signal_fail(f"❌ 技能更新失败: {result.get('error', '未知错误')}")
+            top_skills = result.get("skills", [])[:8]
+            self._record_brain_feedback("skills_refresh", True, f"skills:{len(top_skills)}")
+            lines = [
+                "✅ 技能画像更新完成",
+                f"Markdown: {result.get('markdown_path', '-')}",
+                f"JSON: {result.get('json_path', '-')}",
+                f"关键词命中: {result.get('keyword_coverage', {}).get('coverage', 1.0):.0%}",
+                "",
+                "Top Skills:",
+            ]
+            lines.extend([f"- {s.get('skill')}: {s.get('score')}/100" for s in top_skills])
+            return _signal_done("\n".join(lines))
+
+        return _signal_fail(f"❌ 未知 action: {action}")
+
+
+class AskUserTool(Tool):
+    """向用户发起澄清提问，并显式标记当前任务等待用户回答。"""
+
+    @property
+    def name(self) -> str:
+        return "ask_user"
+
+    @property
+    def description(self) -> str:
+        return "向用户提问以获取更多信息，等待用户回答后再继续执行。"
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "question": {
+                    "type": "string",
+                    "description": "要向用户提出的澄清问题",
+                },
+            },
+            "required": ["question"],
+        }
+
+    async def execute(self, **kwargs: Any) -> str:
+        question = (kwargs.get("question") or "").strip()
+        if not question:
+            return _signal_fail("❌ ask_user 需要提供 question")
+        return _signal_done(f"❓ {question}")
+
+
+# ─────────────────────────────────────────────────────────────
+# 桌面操作 + 外部求援工具
+# ─────────────────────────────────────────────────────────────
+
+class DesktopTool(Tool):
+    """桌面操作能力：打开浏览器/应用、操作 VS Code、向外部 AI 求助、阅读/编写文档。
+
+    action 参数:
+      - open_url          : 用系统浏览器打开 URL
+      - open_app          : 启动应用程序
+      - vscode_open       : 在 VS Code 中打开文件
+      - vscode_terminal   : 在 VS Code 终端运行命令
+      - vscode_problems   : 获取当前工作区的问题列表
+      - ask_external_ai   : 打开浏览器访问 AI（ChatGPT/Claude），粘贴问题
+      - generate_prompt   : 生成提示词供 Qchen 在其他 AI 中使用
+      - read_document     : 读取文档文件（txt/md/docx）
+      - write_document    : 创建文档文件
+    """
+
+    name = "desktop"
+    description = (
+        "桌面操作能力: open_url打开浏览器/open_app启动应用/vscode_open在VSCode打开文件/"
+        "vscode_terminal在VSCode跑命令/ask_external_ai向外部AI求助/"
+        "generate_prompt生成提示词给Qchen使用/read_document阅读文档/write_document写文档"
+    )
+    parameters = {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": [
+                    "open_url", "open_app", "vscode_open", "vscode_terminal",
+                    "vscode_problems", "ask_external_ai", "generate_prompt",
+                    "read_document", "write_document",
+                ],
+                "description": "操作类型",
+            },
+            "url": {"type": "string", "description": "open_url: 要打开的网址"},
+            "app": {"type": "string", "description": "open_app: 应用名称或路径"},
+            "path": {"type": "string", "description": "文件路径"},
+            "command": {"type": "string", "description": "vscode_terminal: 要执行的命令"},
+            "question": {"type": "string", "description": "ask_external_ai: 要问外部AI的问题"},
+            "ai_target": {
+                "type": "string",
+                "enum": ["chatgpt", "claude", "copilot", "deepseek"],
+                "description": "ask_external_ai: 目标AI平台",
+            },
+            "prompt_context": {"type": "string", "description": "generate_prompt: 上下文描述"},
+            "prompt_task": {"type": "string", "description": "generate_prompt: 要解决的任务"},
+            "content": {"type": "string", "description": "write_document: 文档内容"},
+            "title": {"type": "string", "description": "write_document: 文档标题"},
+        },
+        "required": ["action"],
+    }
+
+    def __init__(self, workspace: str = ""):
+        self._workspace = Path(workspace) if workspace else Path.cwd()
+
+    async def execute(self, **kwargs: Any) -> str:
+        return await self.run(**kwargs)
+
+    async def run(self, action: str, **kwargs) -> str:
+        import subprocess as sp
+
+        if action == "open_url":
+            url = kwargs.get("url", "")
+            if not url:
+                return "❌ 需要提供 url 参数"
+            try:
+                sp.Popen(["cmd", "/c", "start", "", url], shell=False)
+                return f"✅ 已用系统浏览器打开: {url}"
+            except Exception as e:
+                return f"❌ 打开URL失败: {e}"
+
+        elif action == "open_app":
+            app = kwargs.get("app", "")
+            if not app:
+                return "❌ 需要提供 app 参数"
+            try:
+                sp.Popen(app, shell=True)
+                return f"✅ 已启动: {app}"
+            except Exception as e:
+                return f"❌ 启动应用失败: {e}"
+
+        elif action == "vscode_open":
+            path = kwargs.get("path", "")
+            if not path:
+                return "❌ 需要提供 path 参数"
+            try:
+                sp.run(["code", path], timeout=10)
+                return f"✅ 已在 VS Code 中打开: {path}"
+            except Exception as e:
+                return f"❌ VS Code打开失败: {e}"
+
+        elif action == "vscode_terminal":
+            cmd = kwargs.get("command", "")
+            if not cmd:
+                return "❌ 需要提供 command 参数"
+            try:
+                result = sp.run(
+                    ["powershell", "-Command", cmd],
+                    capture_output=True, text=True, timeout=60,
+                    cwd=str(self._workspace),
+                    encoding="utf-8", errors="replace",
+                )
+                output = result.stdout[:2000] if result.stdout else ""
+                error = result.stderr[:500] if result.stderr else ""
+                status = "✅" if result.returncode == 0 else "❌"
+                return f"{status} [{result.returncode}]\n{output}\n{error}".strip()
+            except sp.TimeoutExpired:
+                return "❌ 命令超时（60s）"
+            except Exception as e:
+                return f"❌ 执行失败: {e}"
+
+        elif action == "vscode_problems":
+            try:
+                result = sp.run(
+                    ["powershell", "-Command",
+                     f"python -m py_compile (Get-ChildItem -Path '{self._workspace}' -Recurse -Filter '*.py' | Select-Object -First 20 -ExpandProperty FullName) 2>&1"],
+                    capture_output=True, text=True, timeout=30,
+                    cwd=str(self._workspace),
+                )
+                return f"工作区问题检查:\n{result.stdout[:2000]}\n{result.stderr[:500]}".strip()
+            except Exception as e:
+                return f"❌ 检查失败: {e}"
+
+        elif action == "ask_external_ai":
+            question = kwargs.get("question", "")
+            target = kwargs.get("ai_target", "chatgpt")
+            if not question:
+                return "❌ 需要提供 question 参数"
+
+            # AI 平台 URL 映射
+            ai_urls = {
+                "chatgpt": "https://chat.openai.com",
+                "claude": "https://claude.ai",
+                "copilot": "https://github.com/copilot",
+                "deepseek": "https://chat.deepseek.com",
+            }
+            url = ai_urls.get(target, ai_urls["chatgpt"])
+
+            try:
+                # 1. 打开浏览器
+                sp.Popen(["cmd", "/c", "start", "", url], shell=False)
+                import time
+                time.sleep(3)
+
+                # 2. 把问题复制到剪贴板
+                try:
+                    import pyperclip
+                    pyperclip.copy(question)
+                    clipboard_ok = True
+                except ImportError:
+                    clipboard_ok = False
+
+                if clipboard_ok:
+                    return (
+                        f"✅ 已打开 {target}（{url}），问题已复制到剪贴板。\n"
+                        f"请 Qchen 在页面中 Ctrl+V 粘贴并发送。\n\n"
+                        f"问题内容：\n{question[:200]}"
+                    )
+                else:
+                    return (
+                        f"✅ 已打开 {target}（{url}）。\n"
+                        f"⚠️ pyperclip 未安装，无法自动复制。请手动粘贴以下问题：\n\n"
+                        f"{question[:500]}"
+                    )
+            except Exception as e:
+                return f"❌ 打开外部AI失败: {e}"
+
+        elif action == "generate_prompt":
+            context = kwargs.get("prompt_context", "")
+            task = kwargs.get("prompt_task", "")
+            if not task:
+                return "❌ 需要提供 prompt_task 参数"
+
+            prompt = self._build_handoff_prompt(context, task)
+            # 保存到文件并复制到剪贴板
+            prompt_path = self._workspace / "output" / f"prompt_{int(__import__('time').time())}.md"
+            prompt_path.parent.mkdir(parents=True, exist_ok=True)
+            prompt_path.write_text(prompt, encoding="utf-8")
+
+            try:
+                import pyperclip
+                pyperclip.copy(prompt)
+                return (
+                    f"✅ 提示词已生成并复制到剪贴板。\n"
+                    f"📄 保存位置: {prompt_path}\n"
+                    f"请把这段发给 GitHub Copilot 或其他 AI：\n\n"
+                    f"{prompt[:300]}..."
+                )
+            except ImportError:
+                return (
+                    f"✅ 提示词已生成。\n"
+                    f"📄 保存位置: {prompt_path}\n\n"
+                    f"{prompt[:500]}..."
+                )
+
+        elif action == "read_document":
+            path = kwargs.get("path", "")
+            if not path:
+                return "❌ 需要提供 path 参数"
+            p = Path(path)
+            if not p.is_absolute():
+                p = self._workspace / path
+            try:
+                content = p.read_text(encoding="utf-8", errors="replace")
+                return f"📖 {p.name}（{len(content)} 字符）:\n{content[:3000]}"
+            except Exception as e:
+                return f"❌ 读取文档失败: {e}"
+
+        elif action == "write_document":
+            content = kwargs.get("content", "")
+            title = kwargs.get("title", "untitled")
+            if not content:
+                return "❌ 需要提供 content 参数"
+            path = kwargs.get("path", "")
+            if path:
+                p = Path(path)
+            else:
+                p = self._workspace / "output" / f"{title}.md"
+            if not p.is_absolute():
+                p = self._workspace / p
+            try:
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(content, encoding="utf-8")
+                return f"✅ 文档已创建: {p}\n字数: {len(content)}"
+            except Exception as e:
+                return f"❌ 写入文档失败: {e}"
+
+        return f"❌ 未知 action: {action}"
+
+    def _build_handoff_prompt(self, context: str, task: str) -> str:
+        """生成移交给其他 AI 的提示词"""
+        return (
+            f"# 任务移交\n\n"
+            f"## 背景\n"
+            f"我是 Kylo（一个运行在 Windows 上的 AI agent），"
+            f"在处理以下任务时遇到了困难，需要你的帮助。\n\n"
+            f"## 上下文\n{context}\n\n"
+            f"## 需要解决的问题\n{task}\n\n"
+            f"## 要求\n"
+            f"- 请给出具体的解决方案或代码\n"
+            f"- 如果需要执行命令，请给出完整的 PowerShell 命令\n"
+            f"- 如果是代码修改，请给出完整的修改内容\n"
+            f"- 环境: Windows 11, Python 3.12, VS Code\n"
+            f"- 项目路径: {self._workspace}\n"
+        )
+
+
 def register_kylopro_tools(agent_loop) -> None:
     """
     将 Kylopro 自定义工具注册到 nanobot AgentLoop。
@@ -1471,8 +2061,7 @@ def register_kylopro_tools(agent_loop) -> None:
 
     # 搜索 + 财务工具
     tracker = get_tracker(workspace=agent_loop.workspace)
-    agent_loop.tools.register(TavilySearchTool(tracker=tracker, workspace=agent_loop.workspace))
-    agent_loop.tools.register(DuckDuckGoSearchTool(tracker=tracker))
+    agent_loop.tools.register(WebSearchTool(tracker=tracker, workspace=agent_loop.workspace))
     agent_loop.tools.register(CostCheckTool(tracker=tracker))
     agent_loop.tools.register(SetWeeklyBudgetTool(tracker=tracker))
 
@@ -1485,9 +2074,18 @@ def register_kylopro_tools(agent_loop) -> None:
     # KyloBrain：三层记忆 + 元认知 + 觉醒协议
     agent_loop.tools.register(KyloBrainTool())
 
+    # 用户澄清：模糊意图时主动提问
+    agent_loop.tools.register(AskUserTool())
+
     # OAuth2 凭证保险箱：飞书 / Notion / 未来平台 token 管理
     agent_loop.tools.register(OAuth2VaultTool())
     agent_loop.tools.register(FeishuTool())
 
+    # 自由职业项目管理：项目跟踪、工时记录、收入报表
+    agent_loop.tools.register(FreelanceTool(workspace=agent_loop.workspace))
+
     # 覆盖 nanobot 默认 read_file：加编码自适应（修复中文 GBK/UTF-16 txt 读空问题）
     agent_loop.tools.register(KyloReadFileTool(workspace=agent_loop.workspace))
+
+    # 桌面操作：打开浏览器/应用、VS Code 集成、外部 AI 求助
+    agent_loop.tools.register(DesktopTool(workspace=agent_loop.workspace))
