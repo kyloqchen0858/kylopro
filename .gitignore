@@ -1,0 +1,101 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+ENV/
+
+# Kylopro Sensitive & Data
+.env
+.env.*
+! .env.example
+data/
+logs/
+task_logs/
+task_states/
+learning/
+decisions/
+profiles/
+*.log
+
+# Runtime personal data (chat history, personal memory, user profile — never public)
+sessions/
+memory/
+MEMORY.md
+USER.md
+HEARTBEAT.md
+TOOLS.md
+antigravity_results/
+accounts/
+skills_old/
+1.81.5
+
+# Brain runtime state (local only, may contain tokens/cache)
+brain/
+!brain/vault/accounts.json
+# brain/vault/.kylo_secrets.env is NEVER committed
+brain/vault/.kylo_secrets.env
+
+# Public repo hygiene
+workspace/
+DEVLOG.md
+DEVELOPMENT_ROADMAP.md
+code_review_and_development_plan.md
+tasks/
+*_report.md
+*_report.txt
+*.bak.*
+5.9.0
+quick_test.py
+quick_production_test.py
+real_interrupt_test.py
+hello.py
+test_antigravity*.py
+test_ide_bridge_simple*.py
+test_screen_off.py
+test_full_workflow*.py
+test_inbox_simple.py
+test_integrated_system.py
+test_kylopro.py
+test_trae_collaboration.py
+PRODUCTION_DEPLOYMENT.md
+message_aware_framework_design.md
+docs/custom_provider_backup_mode.md
+check_trae_diagnosis.py
+upload_*.py
+verify_upload.py
+test_github_download.py
+test_gemini_*.py
+test_download/
+skills/github_skill_manager*.py
+skills/vector_memory/
+core/*.backup*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
