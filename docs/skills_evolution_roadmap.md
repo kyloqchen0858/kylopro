@@ -23,7 +23,7 @@
 | 降级搜索 | `ddg_search` | ✅ 已落地（无限免费） |
 | 精确抓取 | `web_fetch` | ✅ nanobot 原生 |
 | 深度推理 | `deep_think` → deepseek-reasoner | ✅ 已落地 |
-| 向量记忆 | `memory_manager.py` | ⚠️ 依赖未安装（chromadb + sentence-transformers） |
+| 向量记忆 | `skills/kylobrain/vector_backend.py` + `WarmMemory.search()` | 🟡 已运行（向量后端可用，但主循环任务前直觉链路未全接通） |
 | GUI 控制 | MCP / pyautogui | ⚠️ MCP 未配置 |
 | 自托管搜索 | SearXNG | 📋 未部署（见 T1） |
 | 邮件通道 | Email channel | ✅ nanobot 原生（需配置凭证） |
@@ -222,13 +222,21 @@ L3  minimax        → fallback on 429             ¥/token  限流保护
 ### T2 — 向量记忆激活
 
 - **优先级**: 🟡 高价值
-- **状态**: ⚠️ 依赖未安装
+- **状态**: 🟡 依赖已安装，VectorBackend 已运行；剩余工作是把任务前 recall 完整并入主循环
 - **操作**: 
   ```bash
   venv\Scripts\pip.exe install chromadb sentence-transformers
   ```
-  安装后，`memory/memory_manager.py` 即可使用，无需额外改动
-- **收益**: 跨会话语义检索偏好/代码/决策记忆
+  当前运行态验证结果：
+  - `WarmMemory.vector_status()` = `available=true, operational=true`
+  - `WarmMemory.search()` 优先走向量检索，命中结果带 `_score`
+  - `KyloConnector` 初始化日志显示 `vector=True`
+  - 向量库目录：`brain/vector_store/`
+
+  剩余差口：
+  - `brain_hooks._build_brain_context()` 目前主要读取近期 `episodes/failures/patterns` 的 JSONL 概览
+  - 默认主消息循环没有调用 `on_task_start() -> pre_task_intuition()`，所以“任务前语义 recall”还没完全进入每轮决策
+- **收益**: 跨会话语义检索偏好/代码/决策记忆；失败模式可走向量召回
 
 ### T3 — MCP IDE 工具配置
 
@@ -319,7 +327,7 @@ Kylo 在以下情况下应**主动阅读此文档**：
 ```python
 # 完成某项进化后，用 write_file 更新对应行的状态：
 # 将 "📋 待部署" → "✅ 已落地（2026-03-XX）"
-# 将 "⚠️ 依赖未安装" → "✅ 已落地（安装 chromadb 2026-03-XX）"
+# 将 "⚠️ 依赖未安装" → "🟡 已运行（向量后端在线，待接主循环 recall）"
 ```
 
 ---
