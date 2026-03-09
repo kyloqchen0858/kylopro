@@ -20,3 +20,9 @@ poetry.lock
 .pytest_cache/
 botpy.log
 tests/
+Kylopro-Nexus/
+_kylopro_publish/
+.vscode/
+.coredeveloprule
+task
+upload_report.md
