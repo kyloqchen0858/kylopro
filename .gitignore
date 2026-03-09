@@ -83,6 +83,9 @@ PRODUCTION_DEPLOYMENT.md
 message_aware_framework_design.md
 docs/custom_provider_backup_mode.md
 check_trae_diagnosis.py
+debug_feishu.py
+feishu_diagnostic.py
+test_feishu_api.py
 upload_*.py
 verify_upload.py
 test_github_download.py

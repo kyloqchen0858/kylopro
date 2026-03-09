@@ -31,6 +31,7 @@
 
 - 顶层仓库已补充忽略规则，避免误把 `Kylopro-Nexus/`、`_kylopro_publish/`、本地 IDE 配置推到上游仓库
 - `Kylopro-Nexus/.gitignore` 已补充 `output/` 和 `*.bak`，避免把输出快照和备份文件带进 Git
+- `debug_feishu.py`、`feishu_diagnostic.py`、`test_feishu_api.py` 已明确归类为本地联调脚本，不纳入 Git
 - `CURRENT_STATUS.md`、`ROADMAP.md`、`DEVELOPMENT_ROADMAP.md` 已同步到 Phase 11.6b 现状
 
 ## 五、推送前安全检查
@@ -47,3 +48,10 @@
 1. 在 `Kylopro-Nexus/` 内完成提交与推送
 2. 如需保留顶层仓库的本地整理改动，只提交忽略规则等低风险文件
 3. 不处理 `_kylopro_publish/` 这类发布副本目录，保持本地忽略或单独归档
+
+## 七、本轮推荐合并分支
+
+- 顶层仓库：`sync-20260310-top-level-clean-v2`
+- Kylopro-Nexus：`sync-20260310-kylopro-nexus-clean`
+
+这两个分支都基于可访问远端 `userrepo/main` 做了最小化整理，更适合直接发 PR。避免继续使用早期的中间同步分支作为最终合并入口。
