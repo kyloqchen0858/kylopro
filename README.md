@@ -12,7 +12,8 @@ Kylopro-Nexus 是运行在 nanobot 原生链路上的自治开发工作区。当
 - 大脑：KyloBrain（HOT/WARM/COLD + 元认知 + BrainHooks）
 - 身体：文件工具、终端、TaskBridge、screen、local_think、deep_think
 - 定时任务：每日巩固、每周周报、每 6 小时健康检查
-- 当前未完成方向：见 `tasks/pending/`
+- 当前阶段：Phase 11.6b 已完成，主线进入 Phase 11.7 交互层代码化
+- 当前未完成方向：见 `docs/development/CURRENT_STATUS.md`、`docs/development/ROADMAP.md` 与 `tasks/pending/`
 
 ---
 
@@ -95,6 +96,8 @@ Kylopro-Nexus/
 
 - `tasks/pending/20260308_p1_brain_body_sync.md`
 - `tasks/pending/20260308_p2_vector_memory_activation.md`
+- 交互层代码化主线见 `docs/development/ROADMAP.md`
+- GitHub 合并与仓库整理规范见 `docs/development/REPO_HYGIENE_20260310.md`
 
 ---
 
@@ -115,8 +118,9 @@ Kylopro-Nexus/
 1. 先读 `docs/development/README.md`
 2. 再读 `docs/development/CURRENT_STATUS.md`
 3. 再读 `docs/development/ROADMAP.md`
-4. 然后读 `tasks/pending/`
-5. 需要运行细节时再读 `AGENTS.md` 与 `docs/gateway_channels_playbook.md`
+4. 再读 `docs/development/REPO_HYGIENE_20260310.md`
+5. 然后读 `tasks/pending/`
+6. 需要运行细节时再读 `AGENTS.md` 与 `docs/gateway_channels_playbook.md`
 
 ---
 
