@@ -95,5 +95,5 @@ async def connect_mcp_servers(
                 logger.debug("MCP: registered tool '{}' from server '{}'", wrapper.name, name)
 
             logger.info("MCP server '{}': connected, {} tools registered", name, len(tools.tools))
-        except Exception as e:
+        except BaseException as e:
             logger.error("MCP server '{}': failed to connect: {}", name, e)

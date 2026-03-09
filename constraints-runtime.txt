@@ -1,0 +1,16 @@
+# Runtime constraints for the local nanobot/Kylopro deployment.
+#
+# Purpose:
+# - Keep pyproject.toml semver ranges open enough for upstream evolution.
+# - Freeze only the versions that have been validated in the current runtime.
+# - Allow the biweekly upstream review to propose controlled bumps here.
+#
+# Usage:
+#   pip install -e . -c constraints-runtime.txt
+#   pip install -r requirements.txt -c constraints-runtime.txt
+#
+# Policy:
+# - Do not widen ranges here. This file records known-good runtime pins only.
+# - When the upstream review finds a valuable update, test it first, then bump this file.
+
+litellm==1.81.16

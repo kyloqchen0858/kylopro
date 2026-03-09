@@ -99,3 +99,8 @@ core/*.backup*
 # OS
 .DS_Store
 Thumbs.db
+Kylopro-Nexus/
+_kylopro_publish/
+.coredeveloprule
+task
+upload_report.md

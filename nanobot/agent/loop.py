@@ -154,12 +154,12 @@ class AgentLoop:
             await self._mcp_stack.__aenter__()
             await connect_mcp_servers(self._mcp_servers, self.tools, self._mcp_stack)
             self._mcp_connected = True
-        except Exception as e:
+        except BaseException as e:
             logger.error("Failed to connect MCP servers (will retry next message): {}", e)
             if self._mcp_stack:
                 try:
                     await self._mcp_stack.aclose()
-                except Exception:
+                except BaseException:
                     pass
                 self._mcp_stack = None
         finally:
@@ -337,7 +337,12 @@ class AgentLoop:
     async def run(self) -> None:
         """Run the agent loop, dispatching messages as tasks to stay responsive to /stop."""
         self._running = True
-        await self._connect_mcp()
+        # Run MCP connection in a separate task to isolate anyio cancel scopes
+        mcp_task = asyncio.create_task(self._connect_mcp())
+        try:
+            await mcp_task
+        except BaseException as e:
+            logger.warning("MCP connection task failed (non-fatal): {}", e)
         logger.info("Agent loop started")
 
         while self._running:

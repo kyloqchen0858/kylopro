@@ -179,7 +179,7 @@ class TelegramChannel(BaseChannel):
         # Start polling (this runs until stopped)
         await self._app.updater.start_polling(
             allowed_updates=["message"],
-            drop_pending_updates=True  # Ignore old messages on startup
+            drop_pending_updates=self.config.drop_pending_updates
         )
         
         # Keep running until stopped
@@ -486,8 +486,14 @@ class TelegramChannel(BaseChannel):
             logger.debug("Typing indicator stopped for {}: {}", chat_id, e)
     
     async def _on_error(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Log polling / handler errors instead of silently swallowing them."""
-        logger.error("Telegram error: {}", context.error)
+        """Log polling / handler errors — suppress transient network noise."""
+        from telegram.error import NetworkError, TimedOut
+        err = context.error
+        if isinstance(err, (NetworkError, TimedOut)):
+            # PTB internally retries these; just log at WARNING to reduce noise
+            logger.warning("Telegram transient network error (auto-retry): {}", type(err).__name__)
+        else:
+            logger.error("Telegram error: {}", err)
 
     def _get_extension(self, media_type: str, mime_type: str | None) -> str:
         """Get file extension based on media type."""
