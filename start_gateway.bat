@@ -40,6 +40,8 @@ for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "$py = [Regex]
 powershell -NoProfile -Command "$py = [Regex]::Escape($env:PYTHON); $gws = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*-m nanobot gateway*' }; $hasVenv = $gws | Where-Object { $_.CommandLine -match $py }; if ($hasVenv) { exit 10 } else { exit 0 }"
 if %errorlevel% equ 10 (
     echo [INFO] gateway already running in the correct environment
+    echo [INFO] no action needed — window will close in 5 seconds
+    timeout /t 5 /nobreak > nul
     exit /b 0
 )
 

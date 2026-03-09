@@ -1,10 +1,20 @@
 ---
 name: cost-manager
-description: "财务与配额管理：搜索后端选择策略、API 用量控制、每周预算决策规则"
-metadata: {"nanobot":{"always":true}}
+description: "⚠️ 已整合到 local-brain。财务与配额管理规则现在是 local-brain 的子系统，详见 skills/local-brain/SKILL.md"
+metadata: {"nanobot":{"always":false}}
 ---
 
-# 财务与配额管理
+# ⚠️ 本技能已整合到 local-brain
+
+搜索后端策略、预算规则、配额管理已合并到 `skills/local-brain/SKILL.md` → "财务与配额管理" 章节。
+
+**请参考 local-brain 技能获取成本控制指导。**
+
+---
+
+以下为旧版文档，仅供参考：
+
+---
 
 ## 定位
 

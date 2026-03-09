@@ -19,9 +19,27 @@ from pathlib import Path
 from typing import Optional
 
 
-BASE_DIR = Path(os.environ.get("KYLOPRO_DIR", Path.home() / "Kylopro-Nexus"))
+def _resolve_base_dir() -> Path:
+    env_dir = os.environ.get("KYLOPRO_DIR", "").strip()
+    if env_dir:
+        return Path(env_dir).expanduser().resolve()
+
+    # skills/kylobrain/vector_backend.py -> Kylopro-Nexus/
+    repo_guess = Path(__file__).resolve().parents[2]
+    cwd = Path.cwd().resolve()
+    home_guess = Path.home() / "Kylopro-Nexus"
+    for candidate in (repo_guess, cwd, home_guess):
+        if (candidate / "brain").exists() and (candidate / "skills").exists():
+            return candidate
+    return repo_guess
+
+
+BASE_DIR = _resolve_base_dir()
 VECTOR_DIR = BASE_DIR / "brain" / "vector_store"
-VALID_COLLECTIONS = {"episodes", "patterns", "failures", "demoted", "consolidated"}
+VALID_COLLECTIONS = {
+    "episodes", "patterns", "failures", "demoted", "consolidated",
+    "failure_patterns", "preference",
+}
 
 
 class HashEmbeddingFunction:
@@ -137,6 +155,10 @@ class VectorBackend:
             return "\n".join(str(p) for p in [record.get("task_type", ""), record.get("method", "")] if p)
         if collection == "failures":
             return "\n".join(str(p) for p in [record.get("task", ""), record.get("error", ""), record.get("recovery", "")] if p)
+        if collection == "failure_patterns":
+            return "\n".join(str(p) for p in [record.get("error_type", ""), record.get("task", ""), record.get("fix", "")] if p)
+        if collection == "preference":
+            return "\n".join(str(p) for p in [record.get("key", ""), record.get("value", ""), record.get("source", "")] if p)
         if collection == "demoted":
             return str(record.get("content", ""))
         if collection == "consolidated":

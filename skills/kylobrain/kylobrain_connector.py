@@ -74,7 +74,22 @@ except ImportError as e:
     _self_model_ok = False
 
 
-BASE_DIR  = Path(os.environ.get("KYLOPRO_DIR", Path.home() / "Kylopro-Nexus"))
+def _resolve_base_dir() -> Path:
+    env_dir = os.environ.get("KYLOPRO_DIR", "").strip()
+    if env_dir:
+        return Path(env_dir).expanduser().resolve()
+
+    # skills/kylobrain/kylobrain_connector.py -> Kylopro-Nexus/
+    repo_guess = Path(__file__).resolve().parents[2]
+    cwd = Path.cwd().resolve()
+    home_guess = Path.home() / "Kylopro-Nexus"
+    for candidate in (repo_guess, cwd, home_guess):
+        if (candidate / "brain").exists() and (candidate / "skills").exists():
+            return candidate
+    return repo_guess
+
+
+BASE_DIR  = _resolve_base_dir()
 BRAIN_DIR = BASE_DIR / "brain"
 
 # 全局单例
@@ -323,6 +338,62 @@ class KyloConnector:
         if self.algos:
             return self.algos.apply_soul_patches()
         return {}
+
+    # ══════════════════════════════════════════
+    # 偏好与失败模式（交互优化）
+    # ══════════════════════════════════════════
+
+    def record_preference(self, key: str, value: str, source: str = "clarification") -> None:
+        if not self.brain:
+            return
+        self.brain.warm.append("preference", {
+            "key": key,
+            "value": value,
+            "source": source,
+            "ts": time.time(),
+        })
+
+    def recall_preference(self, key: str, limit: int = 3) -> list[dict]:
+        if not self.brain:
+            return []
+        rows = self.brain.warm.read_all("preference")
+        matched = [r for r in rows if r.get("key") == key]
+        matched.sort(key=lambda r: r.get("ts", 0), reverse=True)
+        return matched[:limit]
+
+    def record_failure(self, error_type: str, task: str, fix: str, success: bool) -> None:
+        if not self.brain:
+            return
+        if not success:
+            # Keep the canonical failures collection updated for pre_task_intuition.
+            self.brain.warm.record_failure(task=task, error=error_type, recovery=fix)
+        self.brain.warm.append("failure_patterns", {
+            "error_type": error_type,
+            "task": task,
+            "fix": fix,
+            "success": success,
+            "ts": time.time(),
+        })
+
+    def recall_failure(self, error_type: str, limit: int = 5) -> list[dict]:
+        if not self.brain:
+            return []
+        rows = self.brain.warm.read_all("failure_patterns")
+        matched = [r for r in rows if r.get("error_type") == error_type]
+
+        canonical = self.brain.warm.read_all("failures")
+        for r in canonical:
+            if error_type in str(r.get("error", "")):
+                matched.append({
+                    "error_type": error_type,
+                    "task": r.get("task", ""),
+                    "fix": r.get("recovery", ""),
+                    "success": False,
+                    "ts": r.get("_ts", 0),
+                })
+
+        matched.sort(key=lambda r: r.get("ts", 0), reverse=True)
+        return matched[:limit]
 
     # ══════════════════════════════════════════
     # 状态报告

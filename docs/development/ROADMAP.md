@@ -1,32 +1,58 @@
 # 当前路线图
 
-## 第一优先级
+> 更新：2026-03-10 Phase 11.6b
 
-1. 稳定 Kylo 的脑体协同与自知层
-2. 保持 Telegram / QQ 双通道稳定
-3. 将 WhatsApp 留在单独排查分支，不影响主链路
+## 当前阶段
 
-## 第二优先级
+### Phase 11.4 — 工具降级体系 + 自知层增强 ✅
+- 飞书文档 URL 修复
+- 能力域 + 降级路径注入 prompt
+- kylo-memory / cost-manager 完成整合收口
 
-1. 完成向量记忆在 WARM 中的长期稳定验证
-2. 补一套网关 / 通道自检能力，让 Kylo 自己汇报在线状态
-3. 继续把运行规则写回自知层，而不是只写在聊天记录里
+### Phase 11.5 — 记忆认同系统 + 桌面操作 ✅
+- L0/L1/L2 记忆认同系统完成
+- DesktopTool 与外部求援能力已接入
+- 设计文档与操作文档已补齐
 
-## 当前建议执行顺序
+### Phase 11.6 — 搜索合并 + 风格修复 + L0 路径修复 ✅
+- `web_search` 统一入口替代 Tavily/DDG 手工选择
+- SOUL 风格自然化
+- L0 路径修复为仓库相对路径
 
-1. 做网关 / 多通道自检能力
-2. 完成向量记忆路径的大样本稳定性验证
-3. 单独回到 WhatsApp 风控与重连问题
+### Phase 11.6b — 追问修复 + MCP 安全 + 脑循环经验录入 ✅
+- `_is_ambiguous_instruction()` 不再用模板绕过 LLM
+- MCP 配置错误经验与搜索引擎误用经验已写入 WARM
+- 记忆系统操作文档补全
 
-## 向量记忆当前结论
+### Phase 11.7 — 交互层代码化（当前主线）
+- MessageCoalescer 消息合并（3 秒窗口）
+- Preemption 检查点（执行中打断）
+- ToolResult silent / progress 过滤
+- 行为评分器（追问、打断、成功率）
 
-1. `chromadb` 已在当前生产 Python 环境中可用
-2. KyloBrain WARM 已走真实向量检索，不再只是 Jaccard 回退
-3. `status()` 与 `health_check()` 已能直接显示 `vector_operational`、`retrieval_mode` 与 `fallback_reason`
+### Phase 12 — 安全加固 + 多平台
+- Tool Policy 代码约束（`policy_check()` 实际拒绝未授权操作）
+- 外部内容 `[EXTERNAL_CONTENT]` 标记
+- 审计日志 `data/action_log.jsonl`
+- Notion OAuth2 适配器
+- Session 压缩（L0 本地跑）
 
-## 进入下一轮时怎么做
+## 当前优先级
 
-1. 先读 `CURRENT_STATUS.md`
-2. 查看 `tasks/pending/`
-3. 如果涉及通道，优先检查 `~/.nanobot/config.json`、`python -m nanobot channels status` 和 gateway 日志
-4. 不要把 WhatsApp 的临时问题误判成整个 nanobot 网关架构问题
+1. **飞书新凭证验证**：完成新的 `app_id/app_secret` 实测，重新验证外部动作闭环
+2. **交互层代码化**：把 MessageCoalescer、Preemption、silent progress 从设计稿落地
+3. **记忆调度生产化**：补齐 L1/L2 cron，验证 identity synthesis 首次产出
+4. **安全硬边界**：实现 Tool Policy、输入净化、审计日志
+
+## GitHub 同步原则
+
+1. 只同步源码、技能手册、测试、架构文档
+2. 不同步 `.env`、`brain/`、`data/`、`logs/`、`tasks/`、`output/`
+3. 顶层 `nanobot` 与嵌套 `Kylopro-Nexus` 分别提交，避免混淆仓库边界
+4. 推送前必须做一次密钥扫描与忽略规则检查
+
+## 当前最大瓶颈
+
+1. **交互品质仍未真正代码化**：消息合并和中断能力还在设计稿阶段
+2. **生产验证仍依赖真实凭证**：飞书链路代码完整，但新凭证尚未完成实测
+3. **安全层还缺代码硬阻断**：文档规则完整，执行时的 policy gate 仍未落地

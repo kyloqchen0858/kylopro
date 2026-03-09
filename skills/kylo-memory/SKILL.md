@@ -1,10 +1,21 @@
 ﻿---
 name: kylo-memory
-description: "Kylo 向量记忆使用规范：何时存、何时取、如何调用 memory_manager.py CLI"
-metadata: {"nanobot":{"always":true}}
+description: "⚠️ 已整合到 kylobrain。向量记忆功能现在是 kylobrain 的子系统，详见 skills/kylobrain/SKILL.md"
+metadata: {"nanobot":{"always":false}}
 ---
 
-# Kylo Memory
+# ⚠️ 本技能已整合到 kylobrain
+
+向量记忆（ChromaDB）功能已合并到 `skills/kylobrain/SKILL.md` → "向量记忆子系统" 章节。
+
+**请使用 kylobrain 技能调用记忆功能。**  
+CLI 工具 `memory/memory_manager.py` 仍然可用，但应通过 kylobrain 框架统一访问。
+
+---
+
+以下为旧版文档，仅供参考：
+
+---
 
 ## 定位
 

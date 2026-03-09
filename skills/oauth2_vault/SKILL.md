@@ -1,39 +1,38 @@
 ---
-name: oauth2_vault
-description: "OAuth2 凭证保险箱 + 飞书集成操作：存储/刷新平台 token，创建飞书文档，发送飞书消息"
-metadata: {"nanobot":{"always":false}}
+name: oauth2-vault
+description: "OAuth2 凭证保险箱 + 飞书集成：加密存储/刷新平台 token，创建飞书文档，发送飞书消息，结果回流大脑"
+metadata: {"nanobot":{"always":true}}
 ---
 
-# oauth2_vault — OAuth2 凭证保险箱技能
+# oauth2-vault — OAuth2 凭证管理与外部平台操作
 
 ## 技能描述
 
 管理外部平台（飞书、Notion 等）的 OAuth2 凭证，提供：
-- 加密存储（SQLite + Fernet AES-256）
+- 加密存储（SQLite + Fernet / PBKDF2+HMAC stdlib fallback）
 - 自动 token 刷新（提前 5 分钟检测过期）
 - 飞书文档创建 + 消息通知一体化
 - 每次执行结果自动写入 KyloBrain WARM episodes
 
-## 核心原则
+## 核心安全规则
 
 - **token 绝不出现在回复或 WARM 记忆正文中**：只显示脱敏摘要（前4***后4）
 - 所有凭证存储在 `brain/vault/oauth2_credentials.db`（本机加密，不入 git）
-- 执行失败时给出 `need_reauth` 信号，让用户重新提供 app_id/app_secret
+- 密钥文件在 Windows 上设置隐藏属性保护
+- 执行失败时给出 `need_reauth` 信号
 
-## 工具调用方式
+## 工具一：`oauth2_vault` — 凭证管理
 
-通过 nanobot Tool 调用 `oauth2_vault`：
+| action | 说明 | 必填参数 |
+|--------|------|---------|
+| `setup` | 配置平台凭证（首次必须执行） | `platform`, `app_id`, `app_secret` |
+| `status` | 查看已配置平台和过期状态 | 无 |
+| `get_token` | 获取有效 token（自动刷新，返回脱敏摘要） | `platform` |
+| `delete` | 删除平台凭证 | `platform` |
 
-```json
-{
-  "action": "...",
-  ...
-}
-```
+setup 可选参数：`user_open_id`, `folder_token`, `chat_id`（飞书专用）
 
-## Actions 列表
-
-### `setup` — 配置平台凭证（首次使用必须执行）
+### 配置示例
 
 ```json
 {
@@ -47,102 +46,87 @@ metadata: {"nanobot":{"always":false}}
 }
 ```
 
-- `user_open_id`：接收审阅通知的飞书用户 open_id（可选）
-- `folder_token`：存放文档的飞书文件夹 token（可选，不填则存根目录）
-- `chat_id`：群组 chat_id（可选，用于向群发通知）
+## 工具二：`feishu` — 飞书文档与消息
 
-### `status` — 查看已配置平台状态
+| action | 说明 | 必填参数 |
+|--------|------|---------|
+| `create_doc` | 创建飞书文档并写入 Markdown 内容 | `title`, `content` |
+| `send_message` | 发送飞书文本消息 | `text` |
+| `status` | 检查飞书 token 状态 | 无 |
 
-```json
-{"action": "status"}
-```
-
-返回：各平台配置状态、token 是否过期（token 值脱敏）
-
-### `get_token` — 获取有效 access_token（内部使用）
+### `create_doc` 创建文档
 
 ```json
 {
-  "action": "get_token",
-  "platform": "feishu"
-}
-```
-
-token 已过期时自动刷新。返回脱敏摘要，不返回明文。
-
-### `feishu_create_doc` — 在飞书创建文档
-
-```json
-{
-  "action": "feishu_create_doc",
+  "action": "create_doc",
   "title": "AI技术周报 2026-03-09",
-  "content": "# 标题\n\n正文...",
+  "content": "# 标题\n\n正文段落...\n\n## 二级标题\n\n- 列表项1\n- 列表项2\n\n---\n\n分割线下方内容",
   "notify": true
 }
 ```
 
-- `content`：支持简单 Markdown（# ## ### 标题，普通段落，---分割线，- 列表项）
-- `notify`：是否发飞书消息通知用户审阅（需配置 `user_open_id` 或 `chat_id`）
-- 返回：`document_url`、`document_id`、`notified` 状态
+- `content`：支持简单 Markdown（# ## ### 标题，段落，--- 分割线，- 列表项）
+- `notify`：创建后发飞书消息通知用户审阅（需配置 user_open_id 或 chat_id，默认 true）
+- 返回：document_url、blocks_written、notified 状态
 
-### `feishu_send_message` — 发飞书文本消息
-
-```json
-{
-  "action": "feishu_send_message",
-  "text": "消息内容",
-  "receive_id": "ou_xxx",
-  "receive_id_type": "open_id"
-}
-```
-
-`receive_id_type`：`open_id`（默认）/ `chat_id` / `user_id`
-
-### `delete` — 删除平台凭证
+### `send_message` 发送消息
 
 ```json
 {
-  "action": "delete",
-  "platform": "feishu"
+  "action": "send_message",
+  "text": "消息内容"
 }
 ```
 
-## 飞书企业自建应用配置说明
+可选：`receive_id`（不填则使用 setup 时配置的 user_open_id）、`receive_id_type`（open_id/chat_id/user_id）
 
-**如何获取 app_id 和 app_secret：**
+## 首次配置流程
 
-1. 进入飞书开放平台：`https://open.feishu.cn/app`
-2. 创建一个「企业自建应用」
-3. 应用凭证 → 复制 `App ID` 和 `App Secret`
-4. 权限管理 → 开启：
-   - 查看、评论、编辑和管理云空间中所有文件 (`drive:drive`)
-   - 以应用身份发送消息 (`im:message:send_as_bot`)
-   - 创建文档 (`docx:document`)
-5. 版本管理 → 发布应用
+```
+Step 1: oauth2_vault(action="setup", platform="feishu", app_id="cli_xxx", app_secret="xxx")
+Step 2: oauth2_vault(action="get_token", platform="feishu")  ← 验证 token 获取
+Step 3: feishu(action="send_message", text="Hello from Kylo!")  ← 验证端到端
+```
 
-**如何获取 user_open_id：**
+## 飞书企业自建应用获取凭据
 
-方法一：飞书机器人发送 `/info` 命令
-方法二：飞书管理后台 → 成员管理 → 找到用户 → User ID
+1. `https://open.feishu.cn/app` → 创建企业自建应用
+2. 应用凭证 → 复制 App ID 和 App Secret
+3. 权限管理开启：`drive:drive`、`im:message:send_as_bot`、`docx:document`
+4. 版本管理 → 发布应用
+5. user_open_id：飞书管理后台成员管理中获取
+6. folder_token：飞书云空间 URL 中 `folder/` 后的字符串
 
-**如何获取 folder_token：**
-
-1. 进入飞书云空间，找到目标文件夹
-2. URL 中的 `folder/` 之后的字符串即为 folder_token
-   例：`https://xxxx.feishu.cn/drive/folder/Abc123DEF` → `folder_token = Abc123DEF`
-
-## 错误处理规则
+## 错误处理
 
 | 错误 | 处理方式 |
 |------|---------|
-| `need_reauth: true` | 告知用户重新调用 `setup` 配置 app_id/app_secret |
-| 飞书 API code=99991663 | app 未安装到企业，让用户发布应用 |
-| 飞书 API code=99991400 | app_id/app_secret 错误，重新获取 |
-| 网络超时 | 重试一次，仍失败则报告 |
+| `need_reauth: true` | 让用户重新 `setup` |
+| 飞书 code=99991663 | app 未发布到企业 |
+| 飞书 code=99991400 | app_id/app_secret 错误 |
+| 网络超时 | 重试一次，仍失败报告 |
 
-## 与 KyloBrain 的集成
+## 失败经验沉淀算法（输出侧）
 
-每次飞书操作（创建文档、发送消息、token 刷新）都自动写入 WARM episodes：
-- `tags: ["oauth2", "feishu", "external_action"]`
+每次 `feishu`/`oauth2_vault` 调用后，AuthMiddleware 会执行如下回流：
+
+1. 记录 episode：`brain/warm/episodes.jsonl`
+2. 生成失败签名：例如 `feishu.doc_api_404` / `feishu.auth_missing_or_expired`
+3. 写入失败库：`brain/warm/failures.jsonl`，字段包括 `task/error/recovery`
+4. 更新模式成功率：`brain/warm/patterns.jsonl` 中 `feishu:create_doc`、`feishu:send_message`
+5. 把下一步建议注入输出：失败回复追加 `建议: ...`，直接给用户可执行动作
+
+这样下一轮重启后，`kylobrain(pre_task)` 可以在执行前命中历史失败并提示规避方案，而不是从零开始试错。
+
+## 重启防失忆要求
+
+- 必须保证 `KYLOPRO_DIR` 指向当前 `Kylopro-Nexus` 根目录
+- 即使未设置环境变量，模块也会回退到仓库根路径探测，不再默认漂移到 `~/Kylopro-Nexus`
+- 启动建议统一使用 `start_gateway.bat` / `clean_restart_gateway.bat`
+
+## 与 KyloBrain 集成
+
+每次外部操作自动写入 WARM episodes：
+- tags: `["oauth2", "feishu", "external_action"]`
 - 包含成功/失败信号和执行时长
-- 30次真实操作后，大脑有足够数据进行模式分析
+- outcome 截断为 200 字符，不含 token 明文

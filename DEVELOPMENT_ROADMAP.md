@@ -1,6 +1,6 @@
 # Kylopro × nanobot 开发路线图
 
-> **最后更新**: 2026-03-08
+> **最后更新**: 2026-03-10
 > **核心原则**: 深入 nanobot 内部改造，而非在外面再包一层；默认中文优先；敏感信息只进专用保险柜，不进入普通记忆和对话输出
 
 ---
@@ -46,6 +46,8 @@ nanobot gateway（唯一生产入口）
 | — | 技能进化路线图（Phase 7.5） | 2026-03-08 | docs/skills_evolution_roadmap.md，skill-evolution 技能 |
 | — | 双脑架构 L0（Phase 8） | 2026-03-08 | LocalThinkTool，skills/local-brain，四层大脑 L0-L3，total 11 tools |
 | — | L0 精细化 + HeartbeatService 本地集成（Phase 9） | 2026-03-08 | OllamaProvider，三模型路由（qwen2.5/coder/r1），心跳决策零成本 |
+| — | Freelance 简历/技能工作流（Phase 11.2） | 2026-03-09 | `freelance` 新增 `resume_refresh` / `skills_refresh`，支持平台版与关键词优化 |
+| — | Freelance 显式脑回流（Phase 11.2） | 2026-03-09 | `freelance:*` 每次执行写入 WARM episodes + patterns，防止“技能建立但大脑无感” |
 
 归档任务文件: `tasks/done/`
 
@@ -54,19 +56,23 @@ nanobot gateway（唯一生产入口）
 ## 进行中
 
 1. **P1 大脑与身体协同验证**
-  - BrainHooks 已注入 HOT 记忆与 KyloBody 骨架
+  - BrainHooks 已注入 HOT/WARM、自知层、降级路径与身体地图
   - 已补充：运行态诊断原则写入自知层，避免把“无窗口”误判为“未运行”
-  - 待做：真实 gateway 会话中的端到端验证
+  - 待做：真实 gateway 会话中的飞书新凭证端到端验证
 
 2. **通道收口**
   - Telegram 已验证
   - QQ 已验证
   - WhatsApp 当前因账号风控与重连问题降为待排查项，不作为稳定生产通道
 
-2. **P2 向量记忆路线收敛**
+3. **P2 向量记忆路线收敛**
   - `chromadb` 与 `sentence-transformers` 已安装到当前开发环境
   - 旧任务已整理进 `tasks/pending/20260308_p2_vector_memory_activation.md`
   - 下一步：把向量检索并入 KyloBrain WARM，而不是继续维护平行记忆体系
+
+4. **P3 交互层代码化**
+  - MessageCoalescer / Preemption / silent progress 仍待实现
+  - 当前已有 `interaction_design.md` 设计稿与行为规则，但未进入主循环
 
 ---
 
@@ -93,6 +99,12 @@ HeartbeatService `_decide` 阶段已改为 `qwen2.5:7b` 本地决策（零成本
 完整部署方案见 `docs/skills_evolution_roadmap.md` T1 节。
 Docker 可用时，一行命令部署：`docker run -d -p 8888:8080 searxng/searxng`
 
+### T3 — 安全硬边界落地
+
+- `policy_check()` 工具权限检查
+- `[EXTERNAL_CONTENT]` 输入净化标记
+- `data/action_log.jsonl` 审计日志
+
 ### 双周上游监测（持续）
 
 下次检查：2026-03-22 → 输出 `docs/reports/nanobot_upstream_20260322.md`
@@ -105,10 +117,19 @@ Docker 可用时，一行命令部署：`docker run -d -p 8888:8080 searxng/sear
 
 ## 建议执行顺序（下一轮）
 
-1. **P1 大脑与身体协同验证**
-2. **T2 向量记忆路线收敛**
-3. **T1 SearXNG**（Docker 可用时，一行启动）
-4. **P5 双周监测**（2026-03-22）
+1. **飞书新凭证端到端验证**
+2. **P3 交互层代码化**
+3. **T3 安全硬边界落地**
+4. **T2 向量记忆路线收敛**
+5. **T1 SearXNG**（Docker 可用时，一行启动）
+6. **P5 双周监测**（2026-03-22）
+
+### 已完成补充 — Freelance 输出路径
+
+- 简历输出：`output/freelance/resume_snapshot_<platform>_YYYY-MM-DD.md`
+- 简历最新：`output/freelance/resume_<platform>_latest.md` + `output/freelance/resume_latest.md`
+- 技能输出：`output/freelance/skills_refresh_<platform>_latest.md`
+- 技能画像：`output/freelance/skills_profile_<platform>_latest.json`
 
 > 注：旧的 Python 丢失告警已不再作为当前主阻塞项，当前优先级回到能力协同与任务收敛。
 

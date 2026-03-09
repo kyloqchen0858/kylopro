@@ -61,8 +61,10 @@ DEVLOG.md
 DEVELOPMENT_ROADMAP.md
 code_review_and_development_plan.md
 tasks/
+output/
 *_report.md
 *_report.txt
+*.bak
 *.bak.*
 5.9.0
 quick_test.py
